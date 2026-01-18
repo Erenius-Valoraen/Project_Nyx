@@ -15,6 +15,8 @@ from colorama import init, Fore, Back, Style
 
 from bisect import bisect_left
 
+from API.shutdown import ShutdownManager
+
 # Initialize colorama for Windows compatibility
 init(autoreset=True)
 
@@ -27,6 +29,8 @@ class API:
         # Define directory paths
         self.LOG_DIR = "logs/util"
         self.JSON_DIR = "jsonLookup"
+
+        self.shutdown = ShutdownManager()
 
     def login(self, api_key, client_code, pin, qr_value):
         api_key = api_key
@@ -354,6 +358,7 @@ class OptionChain:
         self.api = api
         self.json_path = json_path
         self.chain_data = []
+        self.expiries = Expiry()
         
         # Ensure directory exists for safety
         folder = os.path.dirname(self.json_path)
@@ -475,6 +480,10 @@ class OptionChain:
         print(f"\nOption Chain for {Fore.YELLOW}{expiry_date}{Style.RESET_ALL} (Spot: {self.spot_price})")
         print(tabulate(table_rows, headers=headers, tablefmt="fancy_grid", stralign="center"))
 
+
+
+
+
 class Expiry:
     def __init__(self, json_path="jsonLookup/nifty_options.json"):
         # Folder check
@@ -510,24 +519,22 @@ class Expiry:
         before = self.expiries[pos - 1]
         after = self.expiries[pos]
 
-        if abs((after - target_date).days) < abs((target_date - before).days):
-            return after
-        else:
-            return before
+        return after
 
-    def W(self, from_date=None):
+
+    def weekly(self, expiry_skip_offset=0, from_date=None):
         if from_date is None: from_date = datetime.date.today()
-        target = from_date + datetime.timedelta(weeks=1)
+        target = from_date + datetime.timedelta(weeks=0) + datetime.timedelta(days=expiry_skip_offset + 1)
         res = self._find_nearest_expiry(target)
         return self._format_date(res) if res else None
 
-    def W2(self, from_date=None):
+    def bi_weekly(self, expiry_skip_offset=0, from_date=None):
         if from_date is None: from_date = datetime.date.today()
-        target = from_date + datetime.timedelta(weeks=2)
+        target = from_date + datetime.timedelta(weeks=1) + datetime.timedelta(days=expiry_skip_offset + 1)
         res = self._find_nearest_expiry(target)
         return self._format_date(res) if res else None
 
-    def M(self, from_date=None):
+    def monthly(self, from_date=None):
         if from_date is None: from_date = datetime.date.today()
         month = from_date.month + 1
         year = from_date.year
@@ -539,7 +546,7 @@ class Expiry:
         res = self._find_nearest_expiry(target)
         return self._format_date(res) if res else None
 
-    def M6(self, from_date=None):
+    def half_yearly(self, from_date=None):
         if from_date is None: from_date = datetime.date.today()
         month = from_date.month + 6
         year = from_date.year
@@ -551,7 +558,7 @@ class Expiry:
         res = self._find_nearest_expiry(target)
         return self._format_date(res) if res else None
 
-    def Y(self, from_date=None):
+    def yearly(self, from_date=None):
         if from_date is None: from_date = datetime.date.today()
         target = datetime.date(from_date.year + 1, from_date.month, min(from_date.day, 28))
         res = self._find_nearest_expiry(target)

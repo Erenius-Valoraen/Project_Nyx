@@ -28,6 +28,8 @@ class OptionAnalyser:
         self.latest_quotes = None
         self.latest_metrics = {}
 
+        self.api.shutdown.register(self)
+
     # ---------- RENDERING ----------
     def _render(self, quotes, metrics, latency_ms):
         table = Table(expand=True, show_header=True, header_style="bold cyan")
@@ -71,7 +73,7 @@ class OptionAnalyser:
         )
 
     # ---------- WORKER THREAD ----------
-    def _run(self, contract: Contract, printing=True, logging=True):
+    def _run(self, contract: Contract, display=True, logging=True):
         volume_history = deque(maxlen=60)
         prev_volume = None
 
@@ -109,7 +111,7 @@ class OptionAnalyser:
                     "timestamp": datetime.now()
                 }
 
-                if printing:
+                if display:
                     panel = self._render(quotes, self.latest_metrics, latency)
                     live.update(panel)
 
@@ -150,11 +152,3 @@ class OptionAnalyser:
     def quotes(self):
         return self.latest_quotes
     
-    def init(self):
-        def _shutdown(signum, frame):
-            self.stop()
-            if self.thread and self.thread.is_alive():
-                self.thread.join()
-            
-
-        signal.signal(signal.SIGINT, _shutdown)

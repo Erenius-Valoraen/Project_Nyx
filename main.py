@@ -16,9 +16,14 @@ api.prepare_resources(ignore_run_check=False)
 
 
 chain = OptionChain(api)
-contract = chain.find(26200, "20JAN2026", "CE")
 
-analyser = OptionAnalyser(api)
-analyser.init()
-analyser.start(contract, logging=True)
+contract = chain.find(26200, chain.expiries.weekly(), "CE")
+
+analyser1 = OptionAnalyser(api)
+analyser1.start(contract, logging=False)
+
+contract2 = chain.find(26100, chain.expiries.weekly(), "CE")
+
+analyser2 = OptionAnalyser(api)
+analyser2.start(contract2, logging=False)
 
