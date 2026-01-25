@@ -36,3 +36,4 @@ plotly
 lightweight-charts
 python-dotenv
 rich
+textual

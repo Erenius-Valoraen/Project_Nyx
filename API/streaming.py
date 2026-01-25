@@ -11,8 +11,6 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
 
-import signal
-import sys
 import os
 
 console = Console()
@@ -28,6 +26,8 @@ class OptionAnalyser:
         self.latest_quotes = None
         self.latest_metrics = {}
 
+        # to handle threading shutdown
+        self.api.shutdown.enabled = True
         self.api.shutdown.register(self)
 
     # ---------- RENDERING ----------
@@ -135,13 +135,13 @@ class OptionAnalyser:
             log_file.close()
 
     # ---------- CONTROL ----------
-    def start(self, contract, printing=True, logging=True):
+    def start(self, contract, display=True, logging=True):
         if self.running:
             return
 
         self.thread = threading.Thread(
             target=self._run,
-            args=(contract, printing, logging),
+            args=(contract, display, logging),
             daemon=False
         )
         self.thread.start()

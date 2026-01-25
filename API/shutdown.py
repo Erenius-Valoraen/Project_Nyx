@@ -1,11 +1,12 @@
-# Core/shutdown.py
 import signal
 import sys
 
 class ShutdownManager:
-    def __init__(self):
+    def __init__(self, enabled=False):
+        self.enabled = enabled
         self._services = []
-        signal.signal(signal.SIGINT, self._handle)
+        if self.enabled:
+            signal.signal(signal.SIGINT, self._handle)
 
     def register(self, service):
         """
