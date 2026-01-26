@@ -8,63 +8,10 @@ import threading
 
 
 class DashboardApp(App):
-    CSS = """
-    Screen {
-        background: #0a0a0c;
-    }
-
-    DataTable {
-        height: 1fr;
-        border: double #00ff00;
-        background: #121214;
-    }
-
-    DataTable > .datatable--header {
-        background: #1e1e2e;
-        color: #00ffff;
-    }
-
-    #order-bar {
-        height: 3;
-        padding: 0 2;
-        background: #0f0f12;
-    }
-
-    #qty {
-        width: 20;
-        text-align: center;
-        border: tall #aaaaaa;
-        background: #1a1a1a;
-        color: white;
-    }
-
-    #buy {
-        background: #0a3;
-        color: black;
-        border: heavy #00ff88;
-        width: 12;
-    }
-
-    #sell {
-        background: #a00;
-        color: white;
-        border: heavy #ff4444;
-        width: 12;
-    }
-    #cmd {
-    border: tall #ff00ff;
-    background: #1a1a1a;
-    color: white;
-    padding: 0 1;
-    }
-
-    #bottom-panel {
-    dock: bottom;
-    height: 6;
-    background: #0f0f12;
-    }
-    """
-
+    CSS_PATH = "ui.css"
+    BINDINGS = [
+        ("ctrl+c", "quit", "Force Quit") # Press 'Ctrl+Q' to quit
+    ]
     def __init__(self, trading_system):
         super().__init__()
         self.system = trading_system
@@ -79,11 +26,11 @@ class DashboardApp(App):
         # ---- BOTTOM PANEL ----
         with Vertical(id="bottom-panel"):
             with Horizontal(id="order-bar"):
-                yield Button("BUY", id="buy")
-                yield Input(value="100", id="qty", placeholder="Quantity")
-                yield Button("SELL", id="sell")
+                yield Button("Buy", id="buy", classes="buy")
+                yield Input(value="100", placeholder="Qty", id="qty", classes="qty")
+                yield Button("Sell", id="sell", classes="sell")
 
-            yield Input(placeholder="Command: buy 100 | sell 50", id="cmd")
+            yield Input(placeholder="Command: buy 100 | sell 50", id="command_bar", classes="command")
 
         yield Footer()
 

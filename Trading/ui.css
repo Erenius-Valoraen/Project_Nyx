@@ -1,0 +1,58 @@
+Screen {
+    background: #0a0a0c;
+}
+
+DataTable {
+    height: 1fr;
+    border: double #515151;
+    background: #121214;
+}
+
+DataTable > .datatable--header {
+    background: #1e1e2e;
+    color: #e8cba5;
+}
+
+#order-bar {
+    height: 50%;
+    background: #0f0f12;
+}
+
+#qty {
+    width: 20;
+    text-align: center;
+    border: tall #edb26b;
+    background: #1a1a1a;
+    color: white;
+    margin: 1
+}
+
+#buy {
+    background: #0a3;
+    color: white;
+    /* border: heavy #00ff88; */
+    width: 1;
+    margin: 1;
+
+}
+
+#sell {
+    background: rgb(246, 36, 36);
+    color: white;
+    /* border: heavy #ff4444; */
+    width: 12;
+    margin: 1;
+}
+#cmd {
+border: tall #c4b741;
+background: #1a1a1a;
+color: white;
+/* padding: 1; */
+margin: 2;
+}
+
+#bottom-panel {
+dock: bottom;
+height: 20%;
+/* background: #0f0f12; */
+}
