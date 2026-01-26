@@ -335,7 +335,7 @@ class Contract:
     
     def ltp(self):
         return self.chain.api.opt_ltp(self.expiry, self.strike, self.option_type)
-
+    # dict - buy and sell for bids and asks with a list inside them. Best bid is ['buy'][0]['price'] and best ask is ['sell'][0]['price']
     def depth(self):
         return self.chain.api.opt_depth(self.expiry, self.strike, self.option_type)
 

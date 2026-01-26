@@ -31,9 +31,12 @@ class Position:
     def update(self):
         # ---- MARKET DATA ----
         contract = self.opening_order.contract
-        ltp = contract.ltp()
-        bid = contract.bid()
-        ask = contract.ask()
+
+        depth = contract.depth()
+
+        bid = depth['buy'][0]['price']
+        ask = depth['sell'][0]['price']
+        ltp = (bid+ask)/2
 
         # ---- RECOMPUTE OPEN QTY (PURE) ----
         closing_effect = 0
@@ -96,9 +99,16 @@ class PaperTrading:
             if not p.open:
                 continue
 
-            # Same direction → increase position
+            # Same direction → add to position (treated as add-order)
             if (p.open_qty > 0 and signed_qty > 0) or (p.open_qty < 0 and signed_qty < 0):
-                p.open_qty += signed_qty
+                p.close(Order(
+                    self.contract,
+                    abs(signed_qty),
+                    side,
+                    price,
+                    self.total_trades_executed
+                ))
+                self.total_trades_executed += 1
                 return p
 
             # Opposite direction → close or flip
