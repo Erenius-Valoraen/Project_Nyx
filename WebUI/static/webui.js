@@ -1,0 +1,151 @@
+async function fetchJson(url, options) {
+  const res = await fetch(url, options);
+  const text = await res.text();
+  try {
+    return { ok: res.ok, status: res.status, data: JSON.parse(text) };
+  } catch {
+    return { ok: res.ok, status: res.status, data: text };
+  }
+}
+
+function formatNumber(num, decimals = 2) {
+  if (num === null || num === undefined) return "-";
+  return Number(num).toFixed(decimals);
+}
+
+function formatPL(pl) {
+  if (pl === null || pl === undefined) return "-";
+  const val = Number(pl);
+  const formatted = val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return val >= 0 ? `+${formatted}` : formatted;
+}
+
+function getSideClass(side) {
+  if (side === "buy") return "side-buy";
+  if (side === "sell") return "side-sell";
+  return "side-flat";
+}
+
+function getPLClass(pl) {
+  if (pl === null || pl === undefined) return "";
+  return Number(pl) >= 0 ? "pl-positive" : "pl-negative";
+}
+
+function updatePositionsTable(data) {
+  const tbody = document.getElementById("positions-tbody");
+  if (!tbody) return;
+
+  if (!data.positions || data.positions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="12" class="no-data">No open positions</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.positions.map(pos => {
+    const sideClass = getSideClass(pos.side);
+    const openPLClass = getPLClass(pos.open_pl);
+    const closedPLClass = getPLClass(pos.closed_pl);
+    const statusClass = pos.is_open ? "status-open" : "status-closed";
+    const statusText = pos.is_open ? "OPEN" : "CLOSED";
+
+    return `
+      <tr>
+        <td>${pos.id ?? "-"}</td>
+        <td>${pos.sym ?? "-"}</td>
+        <td class="${sideClass}">${pos.side.toUpperCase()}</td>
+        <td>${pos.orig_qty ?? "-"}</td>
+        <td>${pos.open_qty ?? "-"}</td>
+        <td>${formatNumber(pos.entry)}</td>
+        <td>${formatNumber(pos.bid)}</td>
+        <td>${formatNumber(pos.ask)}</td>
+        <td>${formatNumber(pos.ltp)}</td>
+        <td class="${openPLClass}">${formatPL(pos.open_pl)}</td>
+        <td class="${closedPLClass}">${formatPL(pos.closed_pl)}</td>
+        <td class="${statusClass}">${statusText}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+async function refreshState() {
+  try {
+    const r = await fetchJson("/api/state");
+    if (r.ok && r.data) {
+      updatePositionsTable(r.data);
+    }
+  } catch (error) {
+    console.error("Failed to refresh state:", error);
+  }
+}
+
+async function placeOrder(side, quantity) {
+  if (quantity <= 0) {
+    alert("Quantity must be greater than 0");
+    return;
+  }
+
+  try {
+    const r = await fetchJson("/api/order", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ quantity, side }),
+    });
+
+    if (r.ok && r.data.ok) {
+      await refreshState();
+      const qtyInput = document.getElementById("qty-input");
+      if (qtyInput) qtyInput.focus();
+    } else {
+      alert(`Order failed: ${r.data.error || "Unknown error"}`);
+    }
+  } catch (error) {
+    console.error("Failed to place order:", error);
+    alert("Failed to place order. Check console for details.");
+  }
+}
+
+function handleCommandBar(event) {
+  if (event.key !== "Enter") return;
+
+  const input = event.target;
+  const command = input.value.trim().toLowerCase();
+  input.value = "";
+
+  if (!command) return;
+
+  const parts = command.split(/\s+/);
+  if (parts.length !== 2) {
+    alert("Usage: buy <qty> or sell <qty>");
+    return;
+  }
+
+  const [side, qtyStr] = parts;
+  if (side !== "buy" && side !== "sell") {
+    alert("Invalid side. Use 'buy' or 'sell'");
+    return;
+  }
+
+  const qty = parseInt(qtyStr, 10);
+  if (isNaN(qty) || qty <= 0) {
+    alert("Invalid quantity");
+    return;
+  }
+
+  placeOrder(side, qty);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const buyBtn = document.getElementById("buy-btn");
+  const sellBtn = document.getElementById("sell-btn");
+  const qtyInput = document.getElementById("qty-input");
+  const commandInput = document.getElementById("command-input");
+
+  // Button events
+  if (buyBtn) buyBtn.addEventListener("click", () => placeOrder("buy", parseInt(qtyInput.value, 10)));
+  if (sellBtn) sellBtn.addEventListener("click", () => placeOrder("sell", parseInt(qtyInput.value, 10)));
+  if (commandInput) commandInput.addEventListener("keydown", handleCommandBar);
+
+
+  // Initial load and periodic refresh
+  refreshState();
+  setInterval(refreshState, 1000);
+});

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title or "TradeDashboard (WebUI)" }}</title>
+    <style>
+      @layer base, utils, components;
+      @import 'https://cdn.jsdelivr.net/npm/@webtui/css@latest/dist/base.css';
+      @import 'https://cdn.jsdelivr.net/npm/@webtui/css@latest/dist/utils/box.css';
+      @import 'https://cdn.jsdelivr.net/npm/@webtui/css@latest/dist/components/table.css';
+      @import 'https://cdn.jsdelivr.net/npm/@webtui/css@latest/dist/components/button.css';
+      @import 'https://cdn.jsdelivr.net/npm/@webtui/css@latest/dist/components/input.css';
+      @import 'https://cdn.jsdelivr.net/npm/@webtui/css@latest/dist/components/typography.css';
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='webui.css') }}" />
+  </head>
+  <body class="terminal-ui">
+    {% block content %}{% endblock %}
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
+

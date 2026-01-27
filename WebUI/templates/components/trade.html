@@ -1,0 +1,41 @@
+<header class="terminal-header">
+    <div class="header-title">TradeDashboard - Paper Trading</div>
+    <div class="header-subtitle">Contract: {{ contract_symbol or "-" }}</div>
+  </header>
+
+  <div class="terminal-main">
+    <table id="positions-table" class="positions-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Sym</th>
+          <th>Side</th>
+          <th>Orig</th>
+          <th>Open Qty</th>
+          <th>Entry</th>
+          <th>Bid</th>
+          <th>Ask</th>
+          <th>LTP</th>
+          <th>Open P&L</th>
+          <th>Closed P&L</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="positions-tbody">
+        <tr>
+          <td colspan="12" class="loading">Loading positions...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="terminal-bottom">
+    <div class="order-bar">
+      <button id="buy-btn" class="btn-buy">Buy</button>
+      <input id="qty-input" type="text" inputmode="numeric" pattern="[0-9]*"class="qty-input" placeholder="Qty"  value="100"/>
+      <button id="sell-btn" class="btn-sell">Sell</button>
+    </div>
+    <div class="command-bar-wrapper">
+      <input id="command-input" type="text" class="command-input" placeholder="Command: buy 100 | sell 50" />
+    </div>
+  </div> 

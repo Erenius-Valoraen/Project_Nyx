@@ -1,5 +1,5 @@
 from API.api_util import Contract
-from Trading.dashboard import DashboardApp
+from UI.paper_trading_ui import DashboardApp
 
 class Order:
     def __init__(self, contract: Contract, quantity, side, price, identifier=None, symbol="Instrument"):

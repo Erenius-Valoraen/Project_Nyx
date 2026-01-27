@@ -1,5 +1,7 @@
 from API.api_util import Contract, OptionChain, API
 from Trading.paper_trading import PaperTrading
+
+
 from pprint import pp
 import time
 from dotenv import load_dotenv
@@ -16,15 +18,9 @@ api.login(API_KEY, USERNAME, PIN, TOKEN)
 api.prepare_resources(ignore_run_check=False)
 
 
-import time
-start_time = time.time()
 chain = OptionChain(api)
+contract = chain.find(25900, chain.expiries.weekly(expiry_skip_offset=-1), "CE")
 
-
-contract = chain.find(25600, chain.expiries.weekly(), "CE")
-
-
-
-trader = PaperTrading(api, contract)
-trader.start()
+paper_engine = PaperTrading(api, contract)
+paper_engine.start()
 

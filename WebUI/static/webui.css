@@ -1,0 +1,370 @@
+/* ================================
+   GLOBAL LAYOUT
+================================ */
+/* Terminal/Bloomberg-style UI */
+:root {
+  --bg: #0a0a0c;
+  --bg-panel: #121214;
+  --bg-header: #1e1e2e;
+  --bg-bottom: #0f0f1200;
+  --text: #e8cba5;
+  --text-primary: #ffffff;
+  --text-muted: #a6b4d5;
+  --border: #515151;
+  --box-border-color: #ffffff00;
+  --border-bright: #edb26b;
+  --border-yellow: #c4b741;
+  --buy-bg: #0a3;
+  --buy-text: #ffffff;
+  --sell-bg: #f62424;
+  --sell-text: #ffffff;
+  --side-buy: #00ff88;
+  --side-sell: #ff4444;
+  --pl-positive: #00ff88;
+  --pl-negative: #ff4444;
+  --status-open: #00ff88;
+  --status-closed: #888888;
+
+  --bg: #0a0a0c;
+  --bg-panel: #0e0e12;
+  --bg-header: #101018;
+  --bg-bottom: #0a0a0c;
+
+  --text-primary: #e6e6eb;
+  --text-muted: #8b8fa3;
+
+  --border: #2a2a36;
+  --border-bright: #ffd166;
+  --border-yellow: #ffd166;
+
+  /* Neon accents */
+  --neon-cyan: #00f6ff;
+  --neon-green: #00ff88;
+  --neon-red: #ff4444;
+  --neon-yellow: #ffd166;
+
+  /* Semantic colours (JS relies on these) */
+  --side-buy: var(--neon-green);
+  --side-sell: var(--neon-red);
+  --pl-positive: var(--neon-green);
+  --pl-negative: var(--neon-red);
+  --status-open: var(--neon-green);
+  --status-closed: #666;
+}
+/* ---------- Reset ---------- */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+  height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+
+/* ---------- Main Shell ---------- */
+.terminal-container {
+  width: 100%;
+  max-width: 1400px;
+  height: 92vh;
+  /* height: 100%; */
+
+
+  display: flex;
+  flex-direction: column;
+
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+}
+
+.terminal-container.fullscreen {
+  max-width: max-content;
+  height: 100vh;
+}
+
+/* ---------- Header ---------- */
+.terminal-header {
+  background: var(--bg-header);
+  padding: 8px 12px;
+
+  border-bottom: 1px solid var(--neon-cyan);
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  color: var(--neon-cyan);
+}
+
+.header-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---------- Main Content ---------- */
+.terminal-main {
+  flex: 1;
+  padding: 10px;
+  overflow: auto;
+  background: var(--bg-panel);
+}
+
+/* ---------- Positions Table ---------- */
+.positions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+
+  background: #0b0b10;
+  border: 1px solid var(--border);
+}
+
+.positions-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+
+  background: #0f0f16;
+  border-bottom: 1px solid var(--neon-yellow);
+}
+
+.positions-table th {
+  padding: 6px 8px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--neon-yellow);
+  text-align: left;
+}
+
+.positions-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  white-space: nowrap;
+}
+
+.positions-table tbody tr:nth-child(even) {
+  background: rgba(255,255,255,0.02);
+}
+
+.positions-table tbody tr:hover {
+  background: rgba(0,246,255,0.06);
+}
+
+/* ---------- JS Semantic Classes ---------- */
+.side-buy {
+  color: var(--side-buy);
+  font-weight: 600;
+}
+
+.side-sell {
+  color: var(--side-sell);
+  font-weight: 600;
+}
+
+.side-flat {
+  color: var(--text-muted);
+}
+
+.pl-positive {
+  color: var(--pl-positive);
+  font-weight: 600;
+}
+
+.pl-negative {
+  color: var(--pl-negative);
+  font-weight: 600;
+}
+
+.status-open {
+  color: var(--status-open);
+  font-weight: 600;
+}
+
+.status-closed {
+  color: var(--status-closed);
+  opacity: 0.7;
+}
+
+/* ---------- Bottom Panel ---------- */
+.terminal-bottom {
+  background: var(--bg-bottom);
+  border-top: 1px solid var(--border);
+  padding: 6px 8px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+}
+
+/* ---------- Order Bar ---------- */
+.order-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+}
+
+/* Buttons: terminal-correct */
+.btn-buy,
+.btn-sell {
+  height: 100%;
+  min-width: 52px;
+
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+
+  background: transparent;
+  border: 1px solid;
+  cursor: pointer;
+
+  transition: background 0.12s;
+}
+
+.btn-buy {
+  color: var(--neon-green);
+  border-color: var(--neon-green);
+}
+
+.btn-buy:hover {
+  background: rgba(0,255,136,0.12);
+}
+
+.btn-sell {
+  color: var(--neon-red);
+  border-color: var(--neon-red);
+}
+
+.btn-sell:hover {
+  background: rgba(255,68,68,0.12);
+}
+
+/* Quantity */
+.qty-input {
+  height: 100%;
+  width: 64px;
+
+  background: #0d0d12;
+  border: 1px solid var(--border-bright);
+  color: var(--text-primary);
+
+  font-size: 11px;
+  text-align: center;
+  outline: none;
+}
+
+/* ---------- Command Bar ---------- */
+.command-bar-wrapper {
+  height: 30px;
+}
+
+.command-input {
+  width: 100%;
+  height: 100%;
+
+  background: #0d0d12;
+  border: 1px solid var(--neon-yellow);
+  color: var(--text-primary);
+
+  padding: 0 10px;
+  font-size: 11px;
+  outline: none;
+}
+
+.command-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ---------- Scrollbars ---------- */
+.terminal-main::-webkit-scrollbar {
+  width: 10px;
+}
+
+.terminal-main::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+.terminal-main::-webkit-scrollbar-thumb {
+  background: #2f2f3a;
+}
+
+.terminal-main::-webkit-scrollbar-thumb:hover {
+  background: #3a3a48;
+}
+
+
+/* ================================
+   VIM-STYLE NAV BAR
+================================ */
+
+.vim-nav {
+  height: 20px;
+  background: #0b0b10;
+
+  border-top: 1px solid var(--neon-cyan);
+
+  display: flex;
+  align-items: center;
+  gap: 18px;
+
+  padding: 0 12px;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+
+  user-select: none;
+  margin-top: auto;
+}
+
+.vim-nav span {
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.vim-nav span b {
+  color: var(--neon-cyan);
+  font-weight: 600;
+}
+
+.vim-nav span.active {
+  color: var(--text-primary);
+}
+
+.vim-nav span.active b {
+  color: var(--neon-yellow);
+}
+
+
+.view {
+  display: none;
+}
+.view.active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1400px) {
+  .terminal-container {
+    max-width: 1200px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .terminal-container {
+    max-width: 1000px;
+  }
+}
