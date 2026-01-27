@@ -1,6 +1,6 @@
 <header class="terminal-header">
     <div class="header-title">TradeDashboard - Paper Trading</div>
-    <div class="header-subtitle">Contract: {{ contract_symbol or "-" }}</div>
+    <div class="header-subtitle"><span id="active-contract">{{ contract_symbol or "-" }}</span></div>
   </header>
 
   <div class="terminal-main">
@@ -36,6 +36,9 @@
       <button id="sell-btn" class="btn-sell">Sell</button>
     </div>
     <div class="command-bar-wrapper">
-      <input id="command-input" type="text" class="command-input" placeholder="Command: buy 100 | sell 50" />
+      <input id="command-input" type="text" class="command-input" placeholder="Command: buy 100 | sell 50 | use NIFTY" />
+    </div>
+    <div class="command-hint">
+      Available: {{ ", ".join(contracts) }}
     </div>
   </div> 

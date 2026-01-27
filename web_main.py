@@ -23,9 +23,14 @@ def build_paper_engine():
     api.prepare_resources(ignore_run_check=False)
 
     chain = OptionChain(api)
-    contract = chain.find(25600, chain.expiries.weekly(expiry_skip_offset=0), "CE")
+    contract1 = chain.find(25900, chain.expiries.weekly(expiry_skip_offset=0), "CE")
+    contract2 = chain.find(26000, chain.expiries.weekly(expiry_skip_offset=0), "CE")
 
-    return PaperTrading(api, contract)
+    engine = PaperTrading(api)
+    engine.add_contract(contract1)
+    engine.add_contract(contract2)
+
+    return engine
 
 
 def main():

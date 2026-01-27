@@ -1,17 +1,18 @@
-import asyncio
+import threading
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, DataTable, Input, Button
 from textual.containers import Horizontal, Vertical
 from textual import work
 from rich.text import Text
-import threading
 
 
 class DashboardApp(App):
     CSS_PATH = "ui.css"
+
     BINDINGS = [
-        ("ctrl+c", "quit", "Force Quit") # Press 'Ctrl+Q' to quit
+        ("ctrl+c", "quit", "Force Quit"),
     ]
+
     def __init__(self, trading_system):
         super().__init__()
         self.system = trading_system
@@ -19,22 +20,51 @@ class DashboardApp(App):
         self._running = True
         self.lock = threading.Lock()
 
+        self.symbols = list(self.system.contracts.keys())
+        self.symbol_index = 0
+
+    # ===================== LAYOUT =====================
+
     def compose(self) -> ComposeResult:
         yield Header()
         yield DataTable(zebra_stripes=True)
 
-        # ---- BOTTOM PANEL ----
         with Vertical(id="bottom-panel"):
             with Horizontal(id="order-bar"):
+                yield Input(
+                    value=self.current_symbol(),
+                    placeholder="Symbol",
+                    id="symbol",
+                    classes="symbol",
+                )
                 yield Button("Buy", id="buy", classes="buy")
                 yield Input(value="100", placeholder="Qty", id="qty", classes="qty")
                 yield Button("Sell", id="sell", classes="sell")
 
-            yield Input(placeholder="Command: buy 100 | sell 50", id="command_bar", classes="command")
+            yield Input(
+                placeholder="Command: buy 100 | sell 50",
+                id="command_bar",
+                classes="command",
+            )
 
         yield Footer()
 
-        yield Footer()
+    # ===================== SYMBOL HANDLING =====================
+
+    def current_symbol(self) -> str:
+        if not self.symbols:
+            return ""
+        return self.symbols[self.symbol_index]
+
+    def cycle_symbol(self, direction: int):
+        if not self.symbols:
+            return
+
+        self.symbol_index = (self.symbol_index + direction) % len(self.symbols)
+        self.query_one("#symbol").value = self.current_symbol()
+        self.notify(f"Selected {self.current_symbol()}")
+
+    # ===================== INIT =====================
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
@@ -47,6 +77,22 @@ class DashboardApp(App):
         self.set_interval(0.1, self.update_ui_from_snapshot)
         self.fetch_data_worker()
 
+    # ===================== KEY HANDLING =====================
+
+    def on_key(self, event) -> None:
+        el = self.focused
+
+        # Do not cycle symbols while typing
+        if isinstance(el, Input) and el.id in ("qty", "command_bar"):
+            return
+
+        if event.key == "up":
+            self.cycle_symbol(-1)
+            event.stop()
+        elif event.key == "down":
+            self.cycle_symbol(1)
+            event.stop()
+
     # ===================== DATA FETCH =====================
 
     @work(exclusive=True, thread=True)
@@ -56,7 +102,7 @@ class DashboardApp(App):
         while self._running:
             temp_data = []
 
-            for pos in self.system.positions:
+            for pos in self.system.get_positions():
                 md = pos.update()
                 open_qty = md["open_qty"]
 
@@ -126,17 +172,18 @@ class DashboardApp(App):
 
     # ===================== ORDER HANDLING =====================
 
-    @work(thread=True)
-    def handle_order(self, side: str, qty: int) -> None:
-        self.system.market_order(qty, side)
-        self.notify(f"{side.upper()} {qty} sent")
-
     def _get_qty(self) -> int:
         try:
             return int(self.query_one("#qty").value)
         except ValueError:
             self.notify("Invalid quantity", severity="error")
             return 0
+
+    @work(thread=True)
+    def handle_order(self, side: str, qty: int) -> None:
+        symbol = self.current_symbol()
+        self.system.market_order(symbol, qty, side)
+        self.notify(f"{side.upper()} {symbol} {qty} sent")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         qty = self._get_qty()
@@ -147,14 +194,16 @@ class DashboardApp(App):
             self.handle_order("buy", qty)
         elif event.button.id == "sell":
             self.handle_order("sell", qty)
-    
+
+    # ===================== COMMAND BAR =====================
+
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        if event.input.id != "cmd":
+        if event.input.id != "command_bar":
             return
 
         parts = event.value.strip().lower().split()
         if len(parts) != 2:
-            self.notify("Usage: buy <qty> or sell <qty>", severity="warning")
+            self.notify("Usage: buy <qty> | sell <qty>", severity="warning")
             return
 
         side, qty = parts
@@ -169,10 +218,9 @@ class DashboardApp(App):
             return
 
         self.handle_order(side, qty)
-
-        # Clear command bar ONLY (qty input remains untouched)
         event.input.value = ""
 
-    
+    # ===================== SHUTDOWN =====================
+
     def on_shutdown(self) -> None:
         self._running = False

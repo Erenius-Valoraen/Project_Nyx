@@ -66,11 +66,30 @@ function updatePositionsTable(data) {
   }).join("");
 }
 
+/**
+ * Parse available contracts from HTML:
+ * Available: NIFTY, BANKNIFTY, RELIANCE
+ */
+function getContractsFromHint() {
+  const hint = document.querySelector(".command-hint");
+  if (!hint) return [];
+  const text = hint.textContent || "";
+  const match = text.match(/Available:\s*(.*)/i);
+  if (!match) return [];
+  return match[1].split(",").map(s => s.trim()).filter(Boolean);
+}
+
 async function refreshState() {
   try {
     const r = await fetchJson("/api/state");
     if (r.ok && r.data) {
       updatePositionsTable(r.data);
+
+      // update active contract label in header
+      const active = document.getElementById("active-contract");
+      if (active) {
+        active.textContent = r.data.selected_contract || "-";
+      }
     }
   } catch (error) {
     console.error("Failed to refresh state:", error);
@@ -103,28 +122,67 @@ async function placeOrder(side, quantity) {
   }
 }
 
+async function switchContract(symbol) {
+  try {
+    const r = await fetchJson("/api/select_contract", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ symbol }),
+    });
+
+    if (r.ok && r.data.ok) {
+      await refreshState();
+    } else {
+      alert(`Contract switch failed: ${r.data.error || "Unknown error"}`);
+    }
+  } catch (error) {
+    console.error("Failed to switch contract:", error);
+    alert("Failed to switch contract. Check console for details.");
+  }
+}
+
 function handleCommandBar(event) {
   if (event.key !== "Enter") return;
 
   const input = event.target;
-  const command = input.value.trim().toLowerCase();
+  const command = input.value.trim();
   input.value = "";
 
   if (!command) return;
 
   const parts = command.split(/\s+/);
   if (parts.length !== 2) {
-    alert("Usage: buy <qty> or sell <qty>");
+    alert("Usage:\n buy <qty>\n sell <qty>\n use <symbol|index>");
     return;
   }
 
-  const [side, qtyStr] = parts;
+  const [cmd, arg] = parts;
+
+  if (cmd.toLowerCase() === "use") {
+    // allow use 1, use 2, or use SYMBOL
+    const idx = parseInt(arg, 10);
+    if (!isNaN(idx)) {
+      const contracts = getContractsFromHint();
+      const symbol = contracts[idx - 1];
+      if (!symbol) {
+        alert("Invalid contract index");
+        return;
+      }
+      switchContract(symbol);
+      return;
+    }
+
+    switchContract(arg);
+    return;
+  }
+
+  const side = cmd.toLowerCase();
   if (side !== "buy" && side !== "sell") {
     alert("Invalid side. Use 'buy' or 'sell'");
     return;
   }
 
-  const qty = parseInt(qtyStr, 10);
+  const qty = parseInt(arg, 10);
   if (isNaN(qty) || qty <= 0) {
     alert("Invalid quantity");
     return;
@@ -143,7 +201,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (buyBtn) buyBtn.addEventListener("click", () => placeOrder("buy", parseInt(qtyInput.value, 10)));
   if (sellBtn) sellBtn.addEventListener("click", () => placeOrder("sell", parseInt(qtyInput.value, 10)));
   if (commandInput) commandInput.addEventListener("keydown", handleCommandBar);
-
 
   // Initial load and periodic refresh
   refreshState();
