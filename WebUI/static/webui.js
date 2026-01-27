@@ -112,7 +112,7 @@ async function placeOrder(side, quantity) {
     if (r.ok && r.data.ok) {
       await refreshState();
       const qtyInput = document.getElementById("qty-input");
-      if (qtyInput) qtyInput.focus();
+      if (qtyInput) {};
     } else {
       alert(`Order failed: ${r.data.error || "Unknown error"}`);
     }

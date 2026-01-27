@@ -10,52 +10,69 @@ function toggleFullscreen() {
 }
 
 function focusAtEnd(el) {
-  el.focus();
+  el.focus({ preventScroll: true });
   const len = el.value.length;
   el.setSelectionRange(len, len);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   const qty_input = document.querySelector("#qty-input");
-  const order_bar = document.querySelector("#command-input");
+  const command_input = document.querySelector("#command-input");
 
   switchView("trade");
 
-  // 🔒 Numeric-only safety net
-  qty_input.addEventListener("input", () => {
-    qty_input.value = qty_input.value.replace(/\D/g, "");
+  /* ===============================
+     🔢 QTY INPUT: NUMERIC ONLY
+  =============================== */
+  qty_input.addEventListener("keydown", e => {
+    const allowed =
+      (e.key >= "0" && e.key <= "9") ||
+      ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key);
+
+    if (!allowed) e.preventDefault();
   });
 
+  /* ===============================
+     ⌨️ GLOBAL KEY HANDLER
+  =============================== */
   document.addEventListener("keydown", (e) => {
-    const el = document.activeElement;
-    const isTyping =
-      el.tagName === "INPUT" ||
-      el.tagName === "TEXTAREA" ||
-      el.isContentEditable;
+    const active = document.activeElement;
+    const qtyFocused = active === qty_input;
+    const commandFocused = active === command_input;
 
-    // ---- ORDERS ----
-    if (e.key === "b" && !isTyping) {
-      placeOrder("buy", parseInt(qty_input.value || 0, 10));
-    }
-
-    if (e.key === "s" && !isTyping) {
-      placeOrder("sell", parseInt(qty_input.value || 0, 10));
-    }
-
-    // ---- VIEWS ----
-    if (e.key === "1" && !isTyping) switchView("trade");
-    if (e.key === "2" && !isTyping) switchView("chain");
-    if (e.key === "f" && !isTyping) toggleFullscreen();
-
-    // ---- TAB TOGGLE (FOCUS / BLUR) ----
+    /* ---------- TAB = TOGGLE QTY ---------- */
     if (e.key === "Tab") {
       e.preventDefault();
 
-      if (document.activeElement === qty_input) {
-        qty_input.blur();               // 🔴 unfocus
+      if (qtyFocused) {
+        qty_input.blur();          // 🔴 unfocus
       } else {
-        focusAtEnd(qty_input);          // 🟢 focus at end
+        focusAtEnd(qty_input);     // 🟢 focus
+      }
+      return;
+    }
+
+    /* ---------- BUY / SELL HOTKEYS ---------- */
+    if (!commandFocused) {
+      if (e.key === "b") {
+        e.preventDefault();
+        placeOrder("buy", parseInt(qty_input.value || 0, 10));
+        return;
+      }
+
+      if (e.key === "s") {
+        e.preventDefault();
+        placeOrder("sell", parseInt(qty_input.value || 0, 10));
+        return;
       }
     }
+
+    /* ---------- BLOCK OTHER HOTKEYS WHILE TYPING COMMAND ---------- */
+    if (commandFocused) return;
+
+    /* ---------- VIEWS ---------- */
+    if (e.key === "1") switchView("trade");
+    if (e.key === "2") switchView("chart");
+    if (e.key === "f") toggleFullscreen();
   });
 });

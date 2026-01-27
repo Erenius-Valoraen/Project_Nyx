@@ -19,7 +19,6 @@ class Order:
 # =========================
 # POSITION
 # =========================
-
 class Position:
     def __init__(self, opening_order: Order):
         self.opening_order = opening_order
@@ -31,16 +30,41 @@ class Position:
         )
 
         self.closing_orders = []
+
         self.closed_pl = 0.0
         self.open_pl = 0.0
         self.open_qty = self.opening_qty
         self.open = True
+
+        # 🔒 Frozen values after close
+        self.close_bid = None
+        self.close_ask = None
+        self.close_ltp = None
 
     def close(self, closing_order: Order):
         self.closing_orders.append(closing_order)
 
     def update(self):
         contract = self.opening_order.contract
+
+        # =========================
+        # CLOSED POSITION → FROZEN
+        # =========================
+        if not self.open:
+            return {
+                "symbol": contract.symbol,
+                "ltp": self.close_ltp,
+                "bid": self.close_bid,
+                "ask": self.close_ask,
+                "open_qty": 0,
+                "open_pl": 0.0,
+                "closed_pl": self.closed_pl,
+                "open": False,
+            }
+
+        # =========================
+        # OPEN POSITION → LIVE DATA
+        # =========================
         depth = contract.depth()
 
         bid = depth["buy"][0]["price"]
@@ -63,14 +87,21 @@ class Position:
             else:
                 self.closed_pl += o.quantity * (entry - o.price)
 
-        # ---- OPEN P&L ----
+        # ---- OPEN / CLOSE LOGIC ----
         if self.open_qty > 0:
             self.open_pl = self.open_qty * (bid - entry)
+
         elif self.open_qty < 0:
             self.open_pl = abs(self.open_qty) * (entry - ask)
+
         else:
+            # 🔒 POSITION JUST CLOSED — FREEZE PRICES
             self.open_pl = 0.0
             self.open = False
+
+            self.close_bid = bid
+            self.close_ask = ask
+            self.close_ltp = ltp
 
         return {
             "symbol": contract.symbol,
