@@ -18,7 +18,7 @@
     <div class="view" id="view-chart">
       {% include "components/chart.html" %}
     </div>
-
+    {% include "components/trade_panel.html" %}
     {% include "components/vim_nav.html" %}
 
   </div>
@@ -33,8 +33,8 @@
   <script src="{{ url_for('static', filename='webui.js') }}"></script>
   <script src="{{ url_for('static', filename='pageHandler.js') }}"></script>
   <script src="{{ url_for('static', filename='optionChainDisplay.js') }}"></script>
+  <script src="{{ url_for('static', filename='chart.js') }}"></script>
 
-
-
+  
 {% endblock %}
 

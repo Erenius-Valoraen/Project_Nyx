@@ -3,6 +3,7 @@ let currentExpiry = null;
 let pricePoller = null;
 let spotPrice = null; 
 const PRICE_REFRESH_MS = 10_000; 
+window.activeInstrument = null;
 
 // ================== INIT ==================
 document.addEventListener("DOMContentLoaded", () => {

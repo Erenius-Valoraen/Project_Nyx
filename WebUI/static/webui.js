@@ -90,6 +90,9 @@ async function refreshState() {
       if (active) {
         active.textContent = r.data.selected_contract || "-";
       }
+      if (r.data.selected_contract && window.loadCandlesForInstrument) {
+        window.loadCandlesForInstrument(r.data.selected_contract);
+      }
     }
   } catch (error) {
     console.error("Failed to refresh state:", error);
@@ -152,6 +155,9 @@ async function switchContract(symbol) {
 
     if (r.ok && r.data.ok) {
       await refreshState();
+      if (window.loadCandlesForInstrument) {
+        window.loadCandlesForInstrument(symbol);
+      }
     } else {
       alert(`Contract switch failed: ${r.data.error || "Unknown error"}`);
     }

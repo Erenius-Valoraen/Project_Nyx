@@ -341,6 +341,20 @@ class API:
             float: The current index level of Nifty 50.
         """
         return self.smartApi.ltpData(exchange="NSE", tradingsymbol="NIFTY 50", symboltoken="99926000")['data']['ltp']
+    
+    def opt_token_raw(self, instrument):
+        path = os.path.join(self.JSON_DIR, "nifty_options.json")
+
+        with open(path, "r") as file:
+            data = json.load(file)
+
+        for contract in data:
+            if (contract.get('symbol')) == instrument:
+                token = contract.get('token')
+        return token
+
+
+    
     # </Options> --------------------------------------
 
     # <Equity> ----------------------------------------
@@ -456,7 +470,7 @@ class API:
         })
         return data['data']['fetched'][0]['depth']
     
-    def eq_candles(self, symbol, interval, from_date, to_date):
+    def candles(self, symbol, interval, from_date, to_date, type='eq'):
         """
         Retrieves historical OHLC candle data for an equity instrument.
 
@@ -469,16 +483,33 @@ class API:
         Returns:
             list: Historical candle data payload.
         """
-        token = self.get_equity_token(symbol)
-        data = self.smartApi.getCandleData(
-            historicDataParams= {
-            "exchange":"NSE",
-            "symboltoken":str(token),
-            "interval":interval,
-            "fromdate":from_date,
-            "todate":to_date}
-        )
-        return data['data']
+        if type=='eq':
+            token = self.get_equity_token(symbol)
+        elif type=='opt':
+      
+            path = os.path.join(self.JSON_DIR, "nifty_options.json")
+
+            with open(path, "r") as file:
+                data = json.load(file)
+
+            for contract in data:
+                if (contract.get('symbol')) == symbol:
+                    token = contract.get('token')
+
+        try:
+            candles = self.smartApi.getCandleData(
+                historicDataParams= {
+                "exchange":"NSE" if type=='eq' else "NFO",
+                "symboltoken":str(token),
+                "interval":interval,
+                "fromdate":from_date,
+                "todate":to_date
+                }
+            )
+        except Exception as e:
+            print(e)
+        # print(candles)
+        return candles['data']
     # </Equity> --------------------------------------
 
 # ------------------------------------------------------------------

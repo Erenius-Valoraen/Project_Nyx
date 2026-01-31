@@ -2,7 +2,7 @@ from __future__ import annotations
 import re
 from turtle import mode
 from flask import Blueprint, current_app, jsonify, render_template, request
-
+from datetime import datetime
 webui_bp = Blueprint("webui", __name__)
 
 
@@ -199,3 +199,47 @@ def nifty_ltp():
         'response': {"ltp": niftyPrice}
     })
 
+@webui_bp.post("/api/candles")
+def nifty_ohlc():
+    """
+    Returns historical OHLC candles for NIFTY
+    time must be UNIX timestamp (seconds)
+    """
+    engine = _paper_engine()
+    payload = request.get_json(silent=True) or {}
+    instrument = payload.get("instrument")
+    timeframe = payload.get("timeframe")
+
+    # print(instrument)
+    # print(timeframe)
+
+    candles = engine.api.candles(instrument, timeframe, '2026-01-01 09:15', '2026-01-31 12:00', type='opt')
+
+    converted_data = []
+
+    for entry in candles:
+        # entry structure: [timestamp, open, high, low, close, volume]
+        
+        # Parse ISO-8601 string and convert to Unix timestamp (seconds)
+        unix_time = int(datetime.fromisoformat(entry[0]).timestamp())
+        
+        converted_data.append({
+            "time": unix_time,
+            "open": entry[1],
+            "high": entry[2],
+            "low": entry[3],
+            "close": entry[4]
+        })
+
+    # candles = [
+    #     {
+    #         "time": 1706784000,
+    #         "open": 22540,
+    #         "high": 22610,
+    #         "low": 22520,
+    #         "close": 22590
+    #     },
+    #     # ...
+    # ]
+
+    return jsonify(converted_data)

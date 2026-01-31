@@ -1,22 +1,8 @@
 <header class="terminal-header">
-    <div class="header-title">TradeDashboard - Option Chain</div>
-    <div class="header-subtitle">Instrument Option Chain</div>
+    <div class="header-title">TradeDashboard - Chart</div>
+    <div class="header-subtitle">Instrument Chart</div>
   </header>
 
-  <div class="terminal-main" style="display: flex; align-items: center; justify-content: center; padding: 40px;">
-    <div style="text-align: center; max-width: 600px;">
-      <h1 style="color: var(--text); margin-bottom: 20px; font-size: 24px;">Web UI is wired up</h1>
-      <p style="color: var(--text-muted); margin-bottom: 30px; line-height: 1.6;">
-        This is Option chain display is under construction
-      </p>
-      <div style="background: var(--bg-panel); border: 2px solid var(--border); padding: 20px; margin-bottom: 30px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-          <span style="color: var(--text-muted);">Contract:</span>
-          <span style="color: var(--text-primary); font-weight: bold;">{{ contract_symbol or "-" }}</span>
-        </div>
-      </div>
-      <!-- <a href="{{ url_for('webui.paper_trading') }}" style="display: inline-block; padding: 12px 24px; background: var(--buy-bg); color: var(--buy-text); text-decoration: none; font-weight: bold; border: none; cursor: pointer;">
-        Go to Paper Trading →
-      </a> -->
-    </div>
-  </div>
+  <!-- <div class="terminal-main" style="display: flex; align-items: center; justify-content: center; padding: 40px;"> -->
+  <div id="candle-chart" style="height: 100%; width: 100%;"></div>
+  <!-- </div> -->

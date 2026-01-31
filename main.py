@@ -24,11 +24,16 @@ chain = OptionChain(api)
 
 cc = chain.get_chain(chain.expiries.weekly())
 
-contracts = []
-for item in cc['ce']:
-    contracts.append(item['contract'])
+# historicParam = {
+#                 "exchange":"NFO",
+#                 "symboltoken":'42512',
+#                 "interval": "ONE_MINUTE",
+#                 "fromdate": "2026-01-01 09:15",
+#                 "todate": "2026-01-31 12:00"
+#                 }
 
-pp(api.batch_opt_ltp(contracts, "FULL"))
+# pp(api.smartApi.getCandleData(historicParam))
+api.candles("NIFTY10FEB2625300CE", 'ONE_MINUTE', '2026-01-01 09:15', '2026-01-31 12:00', type='opt')
 
 # pp(chain.get_chain(chain.expiries.weekly()))
 # paper_engine = PaperTrading(api)
