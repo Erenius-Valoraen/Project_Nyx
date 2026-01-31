@@ -90,16 +90,61 @@ body {
   border: 0.0625rem solid var(--border);
 }
 
+
 .terminal-container.fullscreen {
   max-width: none;
   height: 100vh;
+}
+
+.option-chain-window {
+  width: 20rem;
+  min-width: 0;
+  height: 92vh;
+  flex: 0 0 auto;
+  flex-direction: column;
+}
+.option-chain-window .terminal-header {
+  flex-direction: column;
+}
+.option-chain-body td {
+  align-items: center;
+}
+
+#expiry-tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  padding-left: 0.5rem;
+}
+
+.expiry-tab-btn {
+  color: var(--neon-cyan);
+  cursor: pointer;
+  font-size: 0.6rem;
+  padding: 0;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+.expiry-tab-btn:hover {
+  color: var(--neon-yellow);
+}
+
+.expiry-tab-btn.active {
+  border: var(--neon-cyan);/* Or your terminal's primary color */
+}
+
+.table-root {
+  width: 100%;
+  /* border-collapse: collapse; */
+  text-align: center;
 }
 
 /* ---------- Header ---------- */
 .terminal-header {
   background: var(--bg-header);
   padding: 0.5rem 0.75rem;
-
+  border: 0.0625rem solid var(--border);
   border-bottom: 0.0625rem solid var(--neon-cyan);
 
   display: flex;
@@ -122,12 +167,15 @@ body {
 .terminal-main {
   flex: 1;
   padding: 0.625rem;
+  height: 87.75vh;
   overflow: auto;
   background: var(--bg-panel);
+  border: 0.0625rem solid var(--border);
+
 }
 
 /* ---------- Positions Table ---------- */
-.positions-table {
+.table-root {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.6875rem;
@@ -152,18 +200,83 @@ th {
   color: var(--neon-yellow);
   text-align: left;
 }
+.option-chain-main {
+  padding-top: 0rem;
+  padding-left: 0rem;
+  padding-right: 0rem;
 
-.positions-table td {
+  overflow-y:auto;   /* Enable scrolling */
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+  -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
+
+}
+
+.option-chain-main::-webkit-scrollbar {
+  display: none;
+}
+
+/* ATM Highlight Styling */
+/* .atm-highlight {
+  background-color: rgba(255, 255, 0, 0.15) !important; /* Soft yellow glow 
+}*/
+
+.atm-highlight .strike-cell {
+  color: #ffcc00; /* Distinct color for the ATM strike number */
+  background-color: rgba(255, 255, 0, 0.15) !important;
+}
+
+/* Optional: Keep the table header sticky so it doesn't scroll away */
+.option-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.option-expiry-tabs {
+  background-color: var(--bg-header);
+  margin: 10px;
+  position: sticky;
+  top: 10;
+  z-index: 10;
+}
+
+.option-chain-main th {
+  text-align: center
+}
+.option-chain-main .ce {
+  color: var(--neon-green)
+}
+.option-chain-main .pe {
+  color: var(--neon-red)
+}
+.clickable-contract {
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+/* Highlight the cell on hover */
+.clickable-contract:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #00d1ff; /* A "terminal-blue" highlight */
+}
+
+/* Ensure the strike cell doesn't look clickable */
+.strike-cell {
+  cursor: default;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.table-root td {
   padding: 0.25rem 0.5rem;
   border-bottom: 0.0625rem solid rgba(255, 255, 255, 0.04);
   white-space: nowrap;
 }
 
-.positions-table tbody tr:nth-child(even) {
+.table-root tbody tr:nth-child(even) {
   background: rgba(255, 255, 255, 0.02);
 }
 
-.positions-table tbody tr:hover {
+.table-root tbody tr:hover {
   background: rgba(0, 246, 255, 0.06);
 }
 
@@ -223,8 +336,7 @@ th {
 }
 
 /* ---------- Buttons ---------- */
-.btn-buy,
-.btn-sell {
+button {
   height: 100%;
   min-width: 3.25rem;
 
@@ -239,7 +351,9 @@ th {
 
   transition: background 0.12s;
 }
-
+.test-button {
+  color: var(--neon-cyan);
+}
 .btn-buy {
   color: var(--neon-green);
   border-color: var(--neon-green);
@@ -312,6 +426,7 @@ th {
 }
 
 .command-hint {
+  display: none;
   font-size: 0.75rem;
   color: var(--status-closed);
 }

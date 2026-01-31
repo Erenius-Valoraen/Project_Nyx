@@ -1,5 +1,6 @@
 from __future__ import annotations
-
+import re
+from turtle import mode
 from flask import Blueprint, current_app, jsonify, render_template, request
 
 webui_bp = Blueprint("webui", __name__)
@@ -57,16 +58,18 @@ def health():
 @webui_bp.get("/api/state")
 def state():
     engine = _paper_engine()
+
+    # ONE market fetch, ONE update pass
+    market_updates = engine.update_open_positions()
+    market_map = {p: data for p, data in market_updates}
+
     payload = []
 
     for p in engine.get_positions():
-        try:
-            market = p.update()
-        except Exception:
-            market = None
-
         opening = p.opening_order
         contract = opening.contract if opening else None
+
+        market = market_map.get(p)
 
         open_qty = p.open_qty
         side = "buy" if open_qty > 0 else "sell" if open_qty < 0 else "flat"
@@ -78,9 +81,9 @@ def state():
             "orig_qty": opening.quantity if opening else 0,
             "open_qty": open_qty,
             "entry": opening.price if opening else 0.0,
-            "ltp": market["ltp"] if market else 0.0,
-            "bid": market["bid"] if market else 0.0,
-            "ask": market["ask"] if market else 0.0,
+            "ltp": market["ltp"] if market else p.close_ltp or 0.0,
+            "bid": market["bid"] if market else p.close_bid or 0.0,
+            "ask": market["ask"] if market else p.close_ask or 0.0,
             "open_pl": p.open_pl,
             "closed_pl": p.closed_pl,
             "is_open": p.open,
@@ -138,3 +141,61 @@ def select_contract():
         "ok": True,
         "selected_contract": engine.selected_symbol,
     })
+
+@webui_bp.post("/api/opt_ltp")
+def opt_ltp():
+    engine = _paper_engine()
+    payload = request.get_json(silent=True) or {}
+    contracts = payload.get("contracts")
+    contract_data = []
+
+    for instrument in contracts[:49]:
+        inst_data = split_option_symbol(instrument)
+        contract_data.append({
+            'expiry': inst_data['Expiry'],
+            'strike': inst_data['Strike'],
+            'option_type': inst_data['Type']
+        })
+    # data = {
+    #         'expiry': contract['Expiry'],
+    #         'strike': contract['Strike'],
+    #         'option_type': contract['Type']
+    #     }
+
+    ltp = engine.api.batch_opt_ltp(contract_data, mode="LTP")
+    return jsonify({
+        "ok": True,
+        "data": ltp#should go here
+
+    })
+
+def split_option_symbol(symbol):
+    # Regex Breakdown:
+    # ([A-Z]+)         : Matches the instrument name (e.g., NIFTY)
+    # (\d{2}[A-Z]{3}\d{2}) : Matches the expiry date (e.g., 03FEB26)
+    # (\d+)            : Matches the strike price (e.g., 25600)
+    # (CE|PE)          : Matches the option type (CE or PE)
+    pattern = r"^([A-Z]+)(\d{2}[A-Z]{3}\d{2})(\d+)(CE|PE)$"
+    
+    match = re.match(pattern, symbol)
+    
+    if match:
+        return {
+            "Instrument": match.group(1),
+            "Expiry": match.group(2),
+            "Strike": match.group(3),
+            "Type": match.group(4)
+        }
+    else:
+        return "Invalid Symbol Format"
+
+@webui_bp.get('/api/nifty_ltp')
+def nifty_ltp():
+    api = _paper_engine().api
+    niftyPrice = api.nifty_spot()
+
+    return jsonify({
+        'ok': True,
+        'response': {"ltp": niftyPrice}
+    })
+

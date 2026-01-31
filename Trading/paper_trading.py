@@ -1,4 +1,4 @@
-from API.api_util import Contract
+from API.api_util import Contract, API, OptionChain
 from UI.paper_trading_ui import DashboardApp
 
 
@@ -12,13 +12,14 @@ class Order:
         self.quantity = quantity
         self.side = side              # "buy" | "sell"
         self.price = price
-        self.contract = contract      # single source of truth
-        self.symbol = self.contract.symbol
+        self.contract = contract
+        self.symbol = contract.symbol
 
 
 # =========================
 # POSITION
 # =========================
+
 class Position:
     def __init__(self, opening_order: Order):
         self.opening_order = opening_order
@@ -44,15 +45,19 @@ class Position:
     def close(self, closing_order: Order):
         self.closing_orders.append(closing_order)
 
-    def update(self):
-        contract = self.opening_order.contract
+    # ----------------------------------
+    # BULK MARKET UPDATE (NO API CALLS)
+    # ----------------------------------
+
+    def update_from_market(self, market: dict):
+        symbol = self.opening_order.contract.symbol
 
         # =========================
         # CLOSED POSITION → FROZEN
         # =========================
         if not self.open:
             return {
-                "symbol": contract.symbol,
+                "symbol": symbol,
                 "ltp": self.close_ltp,
                 "bid": self.close_bid,
                 "ask": self.close_ask,
@@ -62,14 +67,13 @@ class Position:
                 "open": False,
             }
 
-        # =========================
-        # OPEN POSITION → LIVE DATA
-        # =========================
-        depth = contract.depth()
+        data = market.get(symbol)
+        if not data:
+            return None
 
-        bid = depth["buy"][0]["price"]
-        ask = depth["sell"][0]["price"]
-        ltp = (bid + ask) / 2
+        bid = data["bid"]
+        ask = data["ask"]
+        ltp = data["ltp"]
 
         # ---- OPEN QTY ----
         closing_effect = 0
@@ -95,16 +99,16 @@ class Position:
             self.open_pl = abs(self.open_qty) * (entry - ask)
 
         else:
-            # 🔒 POSITION JUST CLOSED — FREEZE PRICES
-            self.open_pl = 0.0
+            # 🔒 POSITION JUST CLOSED
             self.open = False
+            self.open_pl = 0.0
 
             self.close_bid = bid
             self.close_ask = ask
             self.close_ltp = ltp
 
         return {
-            "symbol": contract.symbol,
+            "symbol": symbol,
             "ltp": ltp,
             "bid": bid,
             "ask": ask,
@@ -120,7 +124,7 @@ class Position:
 # =========================
 
 class PaperTrading:
-    def __init__(self, api):
+    def __init__(self, api: API):
         self.api = api
 
         self.contracts: dict[str, Contract] = {}
@@ -128,6 +132,8 @@ class PaperTrading:
 
         self.selected_symbol: str | None = None
         self.total_trades_executed = 0
+
+        self.chain = OptionChain(self.api)
 
     # -------------------------
     # CONTRACT MANAGEMENT
@@ -162,6 +168,74 @@ class PaperTrading:
             app.run()
 
     # -------------------------
+    # MARKET DATA (STUB)
+    # -------------------------
+
+    def fetch_market_snapshot(self) -> dict:
+        """
+        Fetch bid/ask/ltp for ALL contracts at once.
+
+        Expected return format:
+        {
+            "SYMBOL": {
+                "bid": float,
+                "ask": float,
+                "ltp": float
+            },
+            ...
+        }
+        """
+        contracts = []
+        seen = set()
+
+        for plist in self.positions.values():
+            for p in plist:
+                if not p.open:
+                    continue
+
+                contract = p.opening_order.contract
+                if contract.symbol not in seen:
+                    contracts.append(contract)
+                    seen.add(contract.symbol)
+
+        if not contracts:
+            return {}
+
+        data = self.api.batch_opt_ltp(contracts, mode="FULL")
+
+        processed_data = {}
+
+        for symbol, book in data.items():
+            processed_data[symbol] = {
+                "bid": float(book["buy"][0]["price"]),
+                "ask": float(book["sell"][0]["price"]),
+                "ltp": (
+                    float(book["buy"][0]["price"]) +
+                    float(book["sell"][0]["price"])
+                ) / 2,
+            }
+
+        return processed_data
+
+    # -------------------------
+    # BULK POSITION UPDATE
+    # -------------------------
+
+    def update_open_positions(self):
+        market = self.fetch_market_snapshot()
+
+        results = []
+        for plist in self.positions.values():
+            for p in plist:
+                if not p.open:
+                    continue
+                data = p.update_from_market(market)
+                if data:
+                    results.append((p, data))
+
+        return results
+
+    # -------------------------
     # ORDER EXECUTION
     # -------------------------
 
@@ -192,7 +266,6 @@ class PaperTrading:
             closing_qty = min(abs(p.open_qty), abs(signed_qty))
             p.close(Order(contract, closing_qty, side, price, self.total_trades_executed))
             self.total_trades_executed += 1
-            p.update()
 
             remaining = abs(signed_qty) - closing_qty
 
@@ -222,6 +295,7 @@ class PaperTrading:
     def market_order_selected(self, quantity: int, side: str, identifier=None):
         if not self.selected_symbol:
             raise RuntimeError("No contract selected")
+
         return self.market_order(
             self.selected_symbol,
             quantity,

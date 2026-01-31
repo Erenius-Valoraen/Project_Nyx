@@ -19,13 +19,24 @@ api.prepare_resources(ignore_run_check=False)
 
 
 chain = OptionChain(api)
-contract1 = chain.find(25900, chain.expiries.weekly(expiry_skip_offset=0), "CE")
-contract2 = chain.find(26000, chain.expiries.weekly(expiry_skip_offset=0), "CE")
+# contract1 = chain.find(25900, chain.expiries.weekly(expiry_skip_offset=0), "CE")
+# contract2 = chain.find(26000, chain.expiries.weekly(expiry_skip_offset=0), "CE")
+
+cc = chain.get_chain(chain.expiries.weekly())
+
+contracts = []
+for item in cc['ce']:
+    contracts.append(item['contract'])
+
+pp(api.batch_opt_ltp(contracts, "FULL"))
+
+# pp(chain.get_chain(chain.expiries.weekly()))
+# paper_engine = PaperTrading(api)
+# paper_engine.add_contract(contract1)
+# paper_engine.add_contract(contract2)
+
+# paper_engine.start()
 
 
-paper_engine = PaperTrading(api)
-paper_engine.add_contract(contract1)
-paper_engine.add_contract(contract2)
 
-paper_engine.start()
 

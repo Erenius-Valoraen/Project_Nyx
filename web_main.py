@@ -1,7 +1,6 @@
-from API.api_util import API, OptionChain
-from Trading.paper_trading import PaperTrading
 from WebUI.app import create_app
-
+from WebUI.resource_prep import ChainPrep
+from API.api_util import API
 from dotenv import load_dotenv
 import os
 
@@ -22,15 +21,9 @@ def build_paper_engine():
     api.login(api_key, username, pin, token)
     api.prepare_resources(ignore_run_check=False)
 
-    chain = OptionChain(api)
-    contract1 = chain.find(25900, chain.expiries.weekly(expiry_skip_offset=0), "CE")
-    contract2 = chain.find(26000, chain.expiries.weekly(expiry_skip_offset=0), "CE")
-
-    engine = PaperTrading(api)
-    engine.add_contract(contract1)
-    engine.add_contract(contract2)
-
-    return engine
+    chain = ChainPrep(api)
+    
+    return chain.engine
 
 
 def main():

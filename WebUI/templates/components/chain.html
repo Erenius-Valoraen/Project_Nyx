@@ -1,14 +1,16 @@
-<!-- LEFT: Option Chain Window -->
 <div class="option-chain-window">
     <div class="terminal-header">
       <div class="header-title">Option Chain</div>
-      <div class="header-subtitle">Select contract using `use <index>`</div>
+          <!-- <div class="header-subtitle">Select contract using `use <index>`</div> -->
     </div>
 
     <div class="terminal-main option-chain-main">
-      <table class="option-chain-table">
-        <thead class="table-head">
-          <tr>
+
+      <div class="option-expiry-tabs" id="expiry-tabs"></div>
+      
+      <table class="table-root">
+        <thead class="table-head option-head">
+          <tr align="center">
             <th class="ce">CE</th>
             <th class="strike">Strike</th>
             <th class="pe">PE</th>
@@ -20,3 +22,4 @@
       </table>
     </div>
 </div>
+

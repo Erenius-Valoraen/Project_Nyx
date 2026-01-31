@@ -22,13 +22,19 @@
     {% include "components/vim_nav.html" %}
 
   </div>
-
+  <script>
+    window.ALL_CONTRACTS = {{ contracts | tojson }};
+  </script>
 
 {% endblock %}
 
 {% block scripts %}
+
   <script src="{{ url_for('static', filename='webui.js') }}"></script>
   <script src="{{ url_for('static', filename='pageHandler.js') }}"></script>
+  <script src="{{ url_for('static', filename='optionChainDisplay.js') }}"></script>
+
+
 
 {% endblock %}
 

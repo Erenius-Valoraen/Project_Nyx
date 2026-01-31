@@ -122,6 +122,26 @@ async function placeOrder(side, quantity) {
   }
 }
 
+async function testButton() {
+  try {
+    const r = await fetchJson("/api/opt_ltp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ 
+        "contract": "NIFTY03FEB2625600CE"
+      }),
+    });
+    if (r.ok && r.data) {
+      console.log(r.data)
+    }
+    
+
+  }
+  catch (error) {
+    console.error(error)
+  }
+}
+
 async function switchContract(symbol) {
   try {
     const r = await fetchJson("/api/select_contract", {
@@ -194,12 +214,14 @@ function handleCommandBar(event) {
 document.addEventListener("DOMContentLoaded", () => {
   const buyBtn = document.getElementById("buy-btn");
   const sellBtn = document.getElementById("sell-btn");
+  const testBtn = document.getElementById("test-btn")
   const qtyInput = document.getElementById("qty-input");
   const commandInput = document.getElementById("command-input");
 
   // Button events
   if (buyBtn) buyBtn.addEventListener("click", () => placeOrder("buy", parseInt(qtyInput.value, 10)));
   if (sellBtn) sellBtn.addEventListener("click", () => placeOrder("sell", parseInt(qtyInput.value, 10)));
+  if (testBtn) testBtn.addEventListener("click", () => testButton())
   if (commandInput) commandInput.addEventListener("keydown", handleCommandBar);
 
   // Initial load and periodic refresh

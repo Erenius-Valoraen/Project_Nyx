@@ -1,30 +1,29 @@
 function switchView(viewName) {
-  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-  document.getElementById(`view-${viewName}`).classList.add("active");
+  $(".view").removeClass("active");
+  $(`#view-${viewName}`).addClass("active");
 }
 
 function toggleFullscreen() {
-  const full = document.querySelector(".fullscreen");
-  if (full) full.classList.remove("fullscreen");
-  document.querySelector(".terminal-container").classList.add("fullscreen");
+  $(".terminal-container").toggleClass("fullscreen");
 }
 
-function focusAtEnd(el) {
+function focusAtEnd($el) {
+  const el = $el[0];
   el.focus({ preventScroll: true });
   const len = el.value.length;
   el.setSelectionRange(len, len);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const qty_input = document.querySelector("#qty-input");
-  const command_input = document.querySelector("#command-input");
+$(document).ready(function () {
+  const $qtyInput = $("#qty-input");
+  const $commandInput = $("#command-input");
 
   switchView("trade");
 
   /* ===============================
      🔢 QTY INPUT: NUMERIC ONLY
   =============================== */
-  qty_input.addEventListener("keydown", e => {
+  $qtyInput.on("keydown", function (e) {
     const allowed =
       (e.key >= "0" && e.key <= "9") ||
       ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key);
@@ -35,19 +34,19 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ===============================
      ⌨️ GLOBAL KEY HANDLER
   =============================== */
-  document.addEventListener("keydown", (e) => {
+  $(document).on("keydown", function (e) {
     const active = document.activeElement;
-    const qtyFocused = active === qty_input;
-    const commandFocused = active === command_input;
+    const qtyFocused = active === $qtyInput[0];
+    const commandFocused = active === $commandInput[0];
 
     /* ---------- TAB = TOGGLE QTY ---------- */
     if (e.key === "Tab") {
       e.preventDefault();
 
       if (qtyFocused) {
-        qty_input.blur();          // 🔴 unfocus
+        $qtyInput.blur();
       } else {
-        focusAtEnd(qty_input);     // 🟢 focus
+        focusAtEnd($qtyInput);
       }
       return;
     }
@@ -56,19 +55,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!commandFocused) {
       if (e.key === "b") {
         e.preventDefault();
-        placeOrder("buy", parseInt(qty_input.value || 0, 10));
+        placeOrder("buy", parseInt($qtyInput.val() || 0, 10));
         return;
       }
 
       if (e.key === "s") {
         e.preventDefault();
-        placeOrder("sell", parseInt(qty_input.value || 0, 10));
+        placeOrder("sell", parseInt($qtyInput.val() || 0, 10));
         return;
       }
     }
 
-    /* ---------- BLOCK OTHER HOTKEYS WHILE TYPING COMMAND ---------- */
-    if (commandFocused) return;
+    /* ---------- BLOCK OTHER HOTKEYS WHILE TYPING ---------- */
+    if (commandFocused || qtyFocused) return;
 
     /* ---------- VIEWS ---------- */
     if (e.key === "1") switchView("trade");
