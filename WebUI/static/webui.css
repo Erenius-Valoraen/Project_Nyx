@@ -46,7 +46,7 @@ body {
   color: var(--text-primary);
   height: 100vh;
   width: 100vw; /* Ensure full viewport usage */
-  overflow: hidden; /* 🛑 CRITICAL: Prevents main window scrollbars */
+  /* overflow: hidden; 🛑 CRITICAL: Prevents main window scrollbars */
 
   display: flex;
   align-items: center;
@@ -160,7 +160,8 @@ body {
 }
 
 .header-subtitle {
-  font-size: 0.6875rem;
+  padding-top: 3px;
+  font-size: 0.65rem;
   color: var(--text-muted);
 }
 
@@ -411,7 +412,7 @@ button:hover, button:active, button:focus {
 
 .qty-input {
   height: 100%;
-  width: 4rem;
+  width: 100%;
   background: #0d0d12;
   border: 0.0625rem solid var(--border-bright);
   color: var(--text-primary);
@@ -422,6 +423,7 @@ button:hover, button:active, button:focus {
 
 .command-bar-wrapper {
   height: 1.875rem;
+  flex-wrap: wrap;
 }
 
 .command-input {
@@ -476,6 +478,7 @@ button:hover, button:active, button:focus {
   user-select: none;
   margin-top: auto;
   flex-shrink: 0;
+  height: fit-content;
 }
 
 .vim-nav span { color: var(--text-muted); cursor: pointer; }
@@ -556,4 +559,7 @@ button:hover, button:active, button:focus {
   button {
     flex: 1; /* Make buttons easy to tap */
   }
+
+
 }
+

@@ -7,9 +7,9 @@
     </div>
     <div class="command-bar-wrapper">
       <input id="command-input" type="text" class="command-input" placeholder="Command" />
-    </div>
-    <div class="header-subtitle"><span id="active-contract">{{ contract_symbol or "-" }}</span></div>
 
+      <div class="header-subtitle"><span id="active-contract">{{ contract_symbol or "-" }}</span></div>
+    </div>
     <div class="command-hint">
       Available: {{ ", ".join(contracts) }}
     </div>
