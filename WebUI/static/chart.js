@@ -74,6 +74,43 @@ const candlestickSeries = chart.addSeries(
     }
 );
 
+
+/* ---------------- Trade entry lines ---------------- */
+
+const entryLines = new Map();
+
+/**
+ * Update trade entry markers
+ * @param {Array} positions - positions from /api/state
+ */
+window.updateTradeEntryLines = function (positions) {
+    // Remove lines that no longer exist
+    for (const [id, line] of entryLines.entries()) {
+        if (!positions.find(p => p.id === id && p.is_open)) {
+            candlestickSeries.removePriceLine(line);
+            entryLines.delete(id);
+        }
+    }
+
+    // Add/update active positions
+    for (const pos of positions) {
+        if (!pos.is_open || pos.entry == null) continue;
+
+        if (entryLines.has(pos.id)) continue;
+
+        const line = candlestickSeries.createPriceLine({
+            price: pos.entry,
+            color: '#26a69a',              // terminal green
+            lineWidth: 2,
+            lineStyle: LightweightCharts.LineStyle.Solid,
+            axisLabelVisible: true,
+            title: `ENTRY ${pos.side.toUpperCase()}`,
+        });
+
+        entryLines.set(pos.id, line);
+    }
+};
+
 /* ---------------- State ---------------- */
 
 let didInitialFit = false;

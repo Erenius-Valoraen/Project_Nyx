@@ -38,3 +38,4 @@ python-dotenv
 rich
 textual
 Flask
+gunicorn

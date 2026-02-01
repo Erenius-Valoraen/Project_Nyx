@@ -209,11 +209,12 @@ def nifty_ohlc():
     payload = request.get_json(silent=True) or {}
     instrument = payload.get("instrument")
     timeframe = payload.get("timeframe")
-
+    # Use UTC instead of local time
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M')
     # print(instrument)
     # print(timeframe)
     IST_OFFSET = 5*3600 + 30*60 #+5HOURS 30 MINUTES FOR INDIAN TIME
-    candles = engine.api.candles(instrument, timeframe, '2000-01-01 09:15', '2026-01-31 12:00', type='opt')
+    candles = engine.api.candles(instrument, timeframe, '2000-01-01 09:15', current_time, type='opt')
 
     converted_data = []
 

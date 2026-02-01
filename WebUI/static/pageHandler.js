@@ -73,5 +73,10 @@ $(document).ready(function () {
     if (e.key === "1") switchView("trade");
     if (e.key === "2") switchView("chart");
     if (e.key === "f") toggleFullscreen();
+
+   
   });
 });
+
+$('#trade-view').click(() => switchView("trade"));
+$('#chart-view').click(() => switchView("chart"));

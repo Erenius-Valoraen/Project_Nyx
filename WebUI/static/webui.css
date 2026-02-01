@@ -391,7 +391,7 @@ button:hover, button:active, button:focus {
   
   /* Animation logic */
   transform: translateX(110%);
-  transition: transform 0.2s steps(8); /* "Jumpy" terminal-style movement */
+  transition: transform 0.1s steps(6); /* "Jumpy" terminal-style movement */
 }
 
 .notification.show {
