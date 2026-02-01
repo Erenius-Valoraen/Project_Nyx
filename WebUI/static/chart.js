@@ -1,5 +1,7 @@
 const container = document.getElementById("candle-chart");
 
+/* ---------------- Chart ---------------- */
+
 const chart = LightweightCharts.createChart(container, {
     width: 1,
     height: 1, // dummy, fixed by ResizeObserver
@@ -37,13 +39,12 @@ const chart = LightweightCharts.createChart(container, {
         borderColor: 'rgba(255, 255, 255, 0.15)',
         textColor: '#8b8fa3',
     },
-
     timeScale: {
         borderColor: 'rgba(255, 255, 255, 0.15)',
         timeVisible: true,
         secondsVisible: false,
-        rightOffset: 10,     // 🔥 space for future candles
-        barSpacing: 8, 
+        rightOffset: 10,     // space for future candles
+        barSpacing: 8,
     },
 
     handleScroll: {
@@ -60,6 +61,8 @@ const chart = LightweightCharts.createChart(container, {
     watermark: { visible: false },
 });
 
+/* ---------------- Series ---------------- */
+
 const candlestickSeries = chart.addSeries(
     LightweightCharts.CandlestickSeries,
     {
@@ -71,7 +74,11 @@ const candlestickSeries = chart.addSeries(
     }
 );
 
+/* ---------------- State ---------------- */
+
 let didInitialFit = false;
+let currentInstrument = null;
+let currentTimeframe = "ONE_MINUTE";
 
 /* ---------------- Resize handling ---------------- */
 
@@ -82,8 +89,8 @@ const ro = new ResizeObserver(entries => {
         if (width > 0 && height > 0) {
             chart.applyOptions({ width, height });
 
-            if (!didInitialFit) {
-                applyInitialViewport(candlestickSeries)
+            if (!didInitialFit && candlestickSeries.data()) {
+                applyInitialViewport(candlestickSeries.data());
                 didInitialFit = true;
             }
         }
@@ -99,42 +106,62 @@ window.addEventListener("resize", () => {
     });
 });
 
-/* ---------------- Historical candles ---------------- */
+/* ---------------- Candle loading ---------------- */
 
-window.loadCandlesForInstrument = async function (instrument) {
+window.loadCandlesForInstrument = async function (
+    instrument,
+    timeframe = currentTimeframe
+) {
     if (!instrument) return;
+
+    currentInstrument = instrument;
+    currentTimeframe = timeframe;
+    didInitialFit = false;
 
     const res = await fetch("/api/candles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            instrument: instrument,
-            timeframe: "ONE_MINUTE",
+            instrument,
+            timeframe,
         }),
     });
 
     const candles = await res.json();
-
     candles.sort((a, b) => a.time - b.time);
 
     candlestickSeries.setData(candles);
-    // chart.timeScale().fitContent();
+    // applyInitialViewport(candles);
 };
 
-
-
+/* ---------------- Initial viewport logic ---------------- */
 
 function applyInitialViewport(candles) {
-    if (!candles.length) return;
+    if (!candles || !candles.length) return;
 
     const total = candles.length;
-    const visibleBars = Math.min(120, total); // ~2 hours on 1m chart
+    const visibleBars = Math.min(120, total); // default window
 
     const from = candles[total - visibleBars].time;
-    const to = candles[total + 10].time;
+    const to = candles[total - 1].time + 10; // future space
 
-    chart.timeScale().setVisibleRange({
-        from,
-        to,
-    });
+    chart.timeScale().setVisibleRange({ from, to });
 }
+
+/* ---------------- Timeframe switcher ---------------- */
+
+document.querySelectorAll(".tf-switcher button").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document
+            .querySelectorAll(".tf-switcher button")
+            .forEach(b => b.classList.remove("active"));
+
+        btn.classList.add("active");
+
+        const tf = btn.dataset.tf;
+
+        if (currentInstrument) {
+            loadCandlesForInstrument(currentInstrument, tf);
+        }
+    });
+});

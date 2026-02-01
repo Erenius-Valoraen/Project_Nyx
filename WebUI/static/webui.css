@@ -317,6 +317,98 @@ button {
 .btn-sell { color: var(--neon-red); border-color: var(--neon-red); }
 .btn-sell:hover { background: rgba(255, 68, 68, 0.12); }
 
+.tf-switcher {
+    display: flex;
+    gap: 6px;
+    padding: 6px 8px;
+    background: #0a0a0c;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-family: JetBrains Mono, monospace;
+}
+
+/* .tf-switcher button {
+    background: #121214;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #8b8fa3;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+} */
+/* Target everything, including links and buttons */
+* {
+    text-decoration: none !important;
+}
+
+/* Specifically target common interactive elements to be safe */
+a, button, input[type="button"], input[type="submit"] {
+    text-decoration: none !important;
+    outline: none; /* Removes the focus ring that often appears on click */
+}
+
+/* Ensure states don't re-introduce the underline */
+a:hover, a:active, a:focus, 
+button:hover, button:active, button:focus {
+    text-decoration: none !important;
+}
+
+.tf-switcher button:hover {
+    color: #fff;
+    border-color: rgba(255,255,255,0.25);
+}
+
+.tf-switcher button.active {
+    color: #0a0a0c;
+    background: #26a69a;
+    border-color: #26a69a;
+}
+
+/* --- Terminal Notification System --- */
+.notification-container {
+  position: fixed;
+  bottom: 40px; /* Aligned above the vim-nav */
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 0; /* Stacked tight like a terminal log */
+}
+
+.notification {
+  background: var(--bg-panel);
+  color: var(--neon-cyan);
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--neon-cyan);
+  margin-top: -1px; /* Overlap borders for a connected look */
+  font-size: 0.75rem;
+  font-family: "JetBrains Mono", monospace;
+  min-width: 250px;
+  max-width: 400px;
+  cursor: pointer;
+  text-transform: uppercase;
+  
+  /* Terminal Glitch/Scanline effect */
+  box-shadow: 0 0 10px rgba(0, 246, 255, 0.1);
+  
+  /* Animation logic */
+  transform: translateX(110%);
+  transition: transform 0.2s steps(8); /* "Jumpy" terminal-style movement */
+}
+
+.notification.show {
+  transform: translateX(0);
+}
+
+/* Success/Error Variants using your variables */
+.notification.success { border-color: var(--neon-green); color: var(--neon-green); }
+.notification.error { border-color: var(--neon-red); color: var(--neon-red); }
+.notification.warning { border-color: var(--neon-yellow); color: var(--neon-yellow); }
+
+.notification::before {
+  content: "> ";
+  font-weight: bold;
+}
+
+
 .qty-input {
   height: 100%;
   width: 4rem;

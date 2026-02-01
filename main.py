@@ -33,7 +33,7 @@ cc = chain.get_chain(chain.expiries.weekly())
 #                 }
 
 # pp(api.smartApi.getCandleData(historicParam))
-api.candles("NIFTY10FEB2625300CE", 'ONE_MINUTE', '2026-01-01 09:15', '2026-01-31 12:00', type='opt')
+pp(api.candles("NIFTY10FEB2625300CE", 'ONE_MINUTE', '2026-01-01 09:15', '2026-01-31 12:00', type='opt'))
 
 # pp(chain.get_chain(chain.expiries.weekly()))
 # paper_engine = PaperTrading(api)

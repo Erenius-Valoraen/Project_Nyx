@@ -13,6 +13,47 @@ function formatNumber(num, decimals = 2) {
   return Number(num).toFixed(decimals);
 }
 
+/**
+ * @param {string} message - The text to display
+ * @param {string} type - 'success', 'error', 'warning', or 'info'
+ * @param {number} duration - Time in ms before it disappears
+ */
+function showToast(message, type = 'info', duration = 3000) {
+  let container = document.querySelector('.notification-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'notification-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  // Dynamic class assignment: "notification success", etc.
+  toast.className = `notification ${type}`;
+  
+  // Adding a terminal-style timestamp and prompt
+  const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  toast.innerHTML = `<span style="opacity: 0.5">[${time}]</span> > ${message}`;
+
+  container.appendChild(toast);
+
+  // Trigger animation
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+  });
+
+  const removeToast = () => {
+    toast.classList.remove('show');
+    toast.addEventListener('transitionend', () => toast.remove());
+  };
+
+  const autoHide = setTimeout(removeToast, duration);
+
+  toast.onclick = () => {
+    clearTimeout(autoHide);
+    removeToast();
+  };
+}
+
 function formatPL(pl) {
   if (pl === null || pl === undefined) return "-";
   const val = Number(pl);
@@ -90,6 +131,7 @@ async function refreshState() {
       if (active) {
         active.textContent = r.data.selected_contract || "-";
       }
+      // load candle data
       if (r.data.selected_contract && window.loadCandlesForInstrument) {
         window.loadCandlesForInstrument(r.data.selected_contract);
       }
@@ -115,9 +157,22 @@ async function placeOrder(side, quantity) {
     if (r.ok && r.data.ok) {
       await refreshState();
       const qtyInput = document.getElementById("qty-input");
-      if (qtyInput) {};
+      if (qtyInput) {
+        if (side === "buy") {
+          showToast(`Bought ${quantity} qty`, 'success')
+        }
+        else if (side === "sell") {
+          showToast(`Sold ${quantity} qty`, 'error')
+        }
+      };
     } else {
-      alert(`Order failed: ${r.data.error || "Unknown error"}`);
+      if (side === "buy") {
+          showToast(`Failed to buy ${quantity} qty`, 'error')
+        }
+        else if (side === "sell") {
+          showToast(`Failed to buy ${quantity} qty`, 'error')
+        }
+      console.log(`Order failed: ${r.data.error || "Unknown error"}`);
     }
   } catch (error) {
     console.error("Failed to place order:", error);

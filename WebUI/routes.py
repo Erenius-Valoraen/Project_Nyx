@@ -212,8 +212,8 @@ def nifty_ohlc():
 
     # print(instrument)
     # print(timeframe)
-
-    candles = engine.api.candles(instrument, timeframe, '2026-01-01 09:15', '2026-01-31 12:00', type='opt')
+    IST_OFFSET = 5*3600 + 30*60 #+5HOURS 30 MINUTES FOR INDIAN TIME
+    candles = engine.api.candles(instrument, timeframe, '2000-01-01 09:15', '2026-01-31 12:00', type='opt')
 
     converted_data = []
 
@@ -223,8 +223,10 @@ def nifty_ohlc():
         # Parse ISO-8601 string and convert to Unix timestamp (seconds)
         unix_time = int(datetime.fromisoformat(entry[0]).timestamp())
         
+        ist_display_timestamp = unix_time + IST_OFFSET
+        
         converted_data.append({
-            "time": unix_time,
+            "time": ist_display_timestamp,
             "open": entry[1],
             "high": entry[2],
             "low": entry[3],

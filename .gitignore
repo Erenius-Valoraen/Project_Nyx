@@ -235,3 +235,5 @@ Thumbs.db
 # -------- Data / runtime --------
 jsonLookup/*.json
 depth_history/
+
+dist/
