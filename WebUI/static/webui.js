@@ -81,7 +81,16 @@ function updatePositionsTable(data) {
     return;
   }
 
-  tbody.innerHTML = data.positions.map(pos => {
+  // 🔽 NEW: sort so latest trade is at the top
+  const sortedPositions = [...data.positions].sort((a, b) => {
+    // Prefer id-based ordering (newer id first)
+    if (a.id != null && b.id != null) {
+      return b.id - a.id;
+    }
+    return 0;
+  });
+
+  tbody.innerHTML = sortedPositions.map(pos => {
     const sideClass = getSideClass(pos.side);
     const openPLClass = getPLClass(pos.open_pl);
     const closedPLClass = getPLClass(pos.closed_pl);
@@ -125,6 +134,11 @@ async function refreshState() {
     const r = await fetchJson("/api/state");
     if (r.ok && r.data) {
       updatePositionsTable(r.data);
+
+      // Update trade entry lines on chart
+      if (window.updateTradeEntryLines && r.data.positions) {
+        window.updateTradeEntryLines(r.data.positions);
+      }
 
       // update active contract label in header
       const active = document.getElementById("active-contract");
@@ -178,6 +192,7 @@ async function placeOrder(side, quantity) {
     console.error("Failed to place order:", error);
     alert("Failed to place order. Check console for details.");
   }
+  refreshState()
 }
 
 async function testButton() {

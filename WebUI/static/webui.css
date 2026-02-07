@@ -422,8 +422,7 @@ button:hover, button:active, button:focus {
 }
 
 .command-bar-wrapper {
-  height: 1.875rem;
-  flex-wrap: wrap;
+  flex-direction: column;
 }
 
 .command-input {
