@@ -29,12 +29,6 @@
 {% endblock %}
 
 {% block scripts %}
-
-  <script src="{{ url_for('static', filename='webui.js') }}"></script>
-  <script src="{{ url_for('static', filename='pageHandler.js') }}"></script>
-  <script src="{{ url_for('static', filename='optionChainDisplay.js') }}"></script>
-  <script src="{{ url_for('static', filename='chart.js') }}"></script>
-
-  
+  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% endblock %}
 
