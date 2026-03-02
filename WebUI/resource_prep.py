@@ -6,6 +6,7 @@ class ChainPrep:
         self.api = api
         self.engine = PaperTrading(self.api)
         self.init_chain()
+        self.init_equity()
    
     def init_chain(self):
 
@@ -20,3 +21,6 @@ class ChainPrep:
         ]
         for contract in all_contracts:
             self.engine.add_contract(contract)
+    
+    def init_equity(self):
+        self.engine.add_equity('RELIANCE')

@@ -1,4 +1,4 @@
-from API.api_util import Contract, API, OptionChain
+from API.api_util import Contract, EquityContract, API, OptionChain
 from UI.paper_trading_ui import DashboardApp
 
 
@@ -7,7 +7,7 @@ from UI.paper_trading_ui import DashboardApp
 # =========================
 
 class Order:
-    def __init__(self, contract: Contract, quantity, side, price, identifier=None):
+    def __init__(self, contract, quantity, side, price, identifier=None):
         self.identifier = identifier
         self.quantity = quantity
         self.side = side              # "buy" | "sell"
@@ -75,6 +75,8 @@ class Position:
         ask = data["ask"]
         ltp = data["ltp"]
 
+        if bid <= 0 or ask <= 0:
+            bid = ask = ltp
         # ---- OPEN QTY ----
         closing_effect = 0
         for o in self.closing_orders:
@@ -118,7 +120,8 @@ class Position:
             "open": self.open,
         }
 
-
+    def __repr__(self):
+        return f"{self.opening_order.symbol}, open: {self.open_qty} "
 # =========================
 # PAPER TRADING ENGINE
 # =========================
@@ -128,6 +131,7 @@ class PaperTrading:
         self.api = api
 
         self.contracts: dict[str, Contract] = {}
+        self.equities: dict[str, EquityContract] = {}
         self.positions: dict[str, list[Position]] = {}
 
         self.selected_symbol: str | None = None
@@ -148,15 +152,24 @@ class PaperTrading:
             self.selected_symbol = symbol
 
     def select_contract(self, symbol: str):
-        if symbol not in self.contracts:
+        if symbol not in self.contracts and symbol not in self.equities:
+            print(self.equities)
             raise ValueError(f"Unknown contract: {symbol}")
         self.selected_symbol = symbol
+
+
+    def add_equity(self, symbol: str):
+        c = EquityContract(self.api, symbol)
+        self.equities[c.symbol] = c
+        self.positions.setdefault(c.symbol, [])
+        if self.selected_symbol is None:
+            self.selected_symbol = c.symbol
 
     @property
     def selected_contract(self) -> Contract | None:
         if not self.selected_symbol:
             return None
-        return self.contracts[self.selected_symbol]
+        return self.contracts.get(self.selected_symbol) or self.equities.get(self.selected_symbol)
 
     # -------------------------
     # UI
@@ -172,50 +185,61 @@ class PaperTrading:
     # -------------------------
 
     def fetch_market_snapshot(self) -> dict:
-        """
-        Fetch bid/ask/ltp for ALL contracts at once.
-
-        Expected return format:
-        {
-            "SYMBOL": {
-                "bid": float,
-                "ask": float,
-                "ltp": float
-            },
-            ...
-        }
-        """
-        contracts = []
-        seen = set()
+        option_contracts = []
+        equity_symbols = []
 
         for plist in self.positions.values():
             for p in plist:
                 if not p.open:
                     continue
 
-                contract = p.opening_order.contract
-                if contract.symbol not in seen:
-                    contracts.append(contract)
-                    seen.add(contract.symbol)
+                c = p.opening_order.contract
+                if c.instrument_type == "OPTION":
+                    option_contracts.append(c)
+                elif c.instrument_type == "EQUITY":
+                    equity_symbols.append(c.symbol)
 
-        if not contracts:
-            return {}
+        market = {}
 
-        data = self.api.batch_opt_ltp(contracts, mode="FULL")
+        # -------- OPTIONS --------
+        if option_contracts:
+            opt_data = self.api.batch_opt_ltp(option_contracts, mode="FULL")
+            for symbol, book in opt_data.items():
+                market[symbol] = {
+                    "bid": float(book["buy"][0]["price"]),
+                    "ask": float(book["sell"][0]["price"]),
+                    "ltp": (
+                        float(book["buy"][0]["price"]) +
+                        float(book["sell"][0]["price"])
+                    ) / 2,
+                }
 
-        processed_data = {}
+        # -------- EQUITIES --------
+        if equity_symbols:
+            eq_data = self.api.smartApi.getMarketData(
+                mode="FULL",
+                exchangeTokens={
+                    "NSE": [self.api.get_equity_token(s) for s in equity_symbols]
+                }
+            )
 
-        for symbol, book in data.items():
-            processed_data[symbol] = {
-                "bid": float(book["buy"][0]["price"]),
-                "ask": float(book["sell"][0]["price"]),
-                "ltp": (
-                    float(book["buy"][0]["price"]) +
-                    float(book["sell"][0]["price"])
-                ) / 2,
-            }
+            for item in eq_data["data"]["fetched"]:
+                d = item["depth"]
+                symbol = item["tradingSymbol"]  # ✅ FIX: Removed duplicate line
+                ltp = float(item["ltp"])
+                
+                bid_raw = float(d["buy"][0]["price"])
+                ask_raw = float(d["sell"][0]["price"])
 
-        return processed_data
+                bid = bid_raw if bid_raw > 0 else ltp
+                ask = ask_raw if ask_raw > 0 else ltp
+                market[symbol] = {
+                    "bid": bid,
+                    "ask": ask,
+                    "ltp": ltp,
+                }
+
+        return market
 
     # -------------------------
     # BULK POSITION UPDATE
@@ -240,15 +264,47 @@ class PaperTrading:
     # -------------------------
 
     def market_order(self, symbol: str, quantity: int, side: str, identifier=None):
-        if symbol not in self.contracts:
+        symbol_type = ""
+        if symbol in self.contracts:
+            symbol_type = "option"
+        elif symbol in self.equities:
+            symbol_type = 'equity'
+        else:
             raise ValueError(f"Contract not registered: {symbol}")
+        
 
-        contract = self.contracts[symbol]
+        contract = None
+        if symbol_type == "option":
+            contract = self.contracts[symbol]
+        elif symbol_type == 'equity':
+            contract = self.equities[symbol]
+
         positions = self.positions[symbol]
 
-        bid = contract.bid()
-        ask = contract.ask()
-        price = ask if side == "buy" else bid
+        # ✅ FIX: Get fresh market data for execution price
+        try:
+            bid = contract.bid()
+            ask = contract.ask()
+            ltp = contract.ltp()
+            
+            # Fallback to LTP if bid/ask are invalid
+            if not bid or bid <= 0:
+                bid = ltp
+            if not ask or ask <= 0:
+                ask = ltp
+                
+            price = ask if side == "buy" else bid
+            
+        except Exception as e:
+            # If market data fails, try to get LTP at minimum
+            try:
+                ltp = contract.ltp()
+                price = ltp
+            except:
+                raise ValueError(f"Cannot execute trade: Market data for {symbol} is unavailable. Error: {e}")
+
+        if price <= 0:
+            raise ValueError(f"Cannot execute trade: Market data for {symbol} is unavailable (Price is 0).")
 
         signed_qty = quantity if side == "buy" else -quantity
 
@@ -260,6 +316,8 @@ class PaperTrading:
             if (p.open_qty > 0 and signed_qty > 0) or (p.open_qty < 0 and signed_qty < 0):
                 p.close(Order(contract, abs(signed_qty), side, price, self.total_trades_executed))
                 self.total_trades_executed += 1
+                print("Added: ")
+                print(positions)
                 return p
 
             # OPPOSITE DIRECTION → CLOSE / FLIP
@@ -276,8 +334,12 @@ class PaperTrading:
                 )
                 positions.append(new_pos)
                 self.total_trades_executed += 1
+                print("Closed: ")
+                print(positions)
                 return new_pos
 
+            print("Neutral: ")
+            print(positions)
             return p
 
         # NO OPEN POSITION → OPEN NEW
@@ -286,6 +348,8 @@ class PaperTrading:
         )
         positions.append(pos)
         self.total_trades_executed += 1
+        print("End: ")
+        print(positions)
         return pos
 
     # -------------------------

@@ -237,3 +237,6 @@ jsonLookup/*.json
 depth_history/
 
 dist/
+
+# Historical Data
+data

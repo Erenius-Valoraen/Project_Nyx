@@ -39,3 +39,5 @@ rich
 textual
 Flask
 gunicorn
+tradingview-screener
+niftystocks

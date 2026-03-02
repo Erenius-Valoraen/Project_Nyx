@@ -313,6 +313,9 @@ class SmartWebSocketV2(object):
             self.wsapp.close()
 
     def _on_error(self, wsapp, error):
+        if self.DISCONNECT_FLAG:
+            logger.info("Disconnected")
+            return
         self.RESUBSCRIBE_FLAG = True
         if self.current_retry_attempt < self.MAX_RETRY_ATTEMPT:
             logger.warning(f"Attempting to resubscribe/reconnect (Attempt {self.current_retry_attempt + 1})...")

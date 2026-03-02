@@ -3,6 +3,8 @@ import re
 from turtle import mode
 from flask import Blueprint, current_app, jsonify, render_template, request
 from datetime import datetime
+
+from API.api_util import EquityContract
 webui_bp = Blueprint("webui", __name__)
 
 
@@ -36,6 +38,7 @@ def paper_trading():
         "main_terminal.html",
         contract_symbol=engine.selected_symbol,
         contracts=list(engine.contracts.keys()),
+        equities=list(engine.equities.keys())
     )
 
 
@@ -148,28 +151,64 @@ def select_contract():
 def opt_ltp():
     engine = _paper_engine()
     payload = request.get_json(silent=True) or {}
-    contracts = payload.get("contracts")
+
+    contracts = payload.get("contracts") or []
+
     contract_data = []
 
     for instrument in contracts[:49]:
         inst_data = split_option_symbol(instrument)
+        if not isinstance(inst_data, dict):
+            continue
+
         contract_data.append({
-            'expiry': inst_data['Expiry'],
-            'strike': inst_data['Strike'],
-            'option_type': inst_data['Type']
+            "expiry": inst_data["Expiry"],
+            "strike": inst_data["Strike"],
+            "option_type": inst_data["Type"],
         })
-    # data = {
-    #         'expiry': contract['Expiry'],
-    #         'strike': contract['Strike'],
-    #         'option_type': contract['Type']
-    #     }
+
+    # 🚨 CRITICAL GUARD
+    if not contract_data:
+        return jsonify({
+            "ok": True,
+            "data": {}
+        })
 
     ltp = engine.api.batch_opt_ltp(contract_data, mode="LTP")
+
     return jsonify({
         "ok": True,
-        "data": ltp#should go here
-
+        "data": ltp
     })
+
+
+@webui_bp.post("/api/eq_ltp")
+def eq_ltp():
+    engine = _paper_engine()
+    payload = request.get_json(silent=True) or {}
+
+    symbols = payload.get("symbols", [])
+    symbols = symbols[:50]
+
+    if not symbols:
+        return jsonify({"ok": True, "data": {}})
+
+    ltp_map = engine.api.batch_eq_ltp(symbols)
+
+    # normalize response shape
+    data = {}
+    for sym, ltp in ltp_map.items():
+        data[sym] = {
+            "ltp": ltp,
+            "bid": 0.0,   # or synthetic later
+            "ask": 0.0
+        }
+
+    return jsonify({
+        "ok": True,
+        "data": data
+    })
+
 
 def split_option_symbol(symbol):
     # Regex Breakdown:
@@ -189,7 +228,7 @@ def split_option_symbol(symbol):
             "Type": match.group(4)
         }
     else:
-        return "Invalid Symbol Format"
+        return None
 
 @webui_bp.get('/api/nifty_ltp')
 def nifty_ltp():
@@ -204,47 +243,50 @@ def nifty_ltp():
 @webui_bp.post("/api/candles")
 def nifty_ohlc():
     """
-    Returns historical OHLC candles for NIFTY
-    time must be UNIX timestamp (seconds)
+    Returns historical OHLC candles
+    Supports BOTH options and equities
     """
     engine = _paper_engine()
     payload = request.get_json(silent=True) or {}
+
     instrument = payload.get("instrument")
     timeframe = payload.get("timeframe")
-    # Use UTC instead of local time
+
+    if not instrument or not timeframe:
+        return jsonify({"ok": False, "error": "instrument and timeframe required"}), 400
+
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M')
-    # print(instrument)
-    # print(timeframe)
-    IST_OFFSET = 5*3600 + 30*60 #+5HOURS 30 MINUTES FOR INDIAN TIME
-    candles = engine.api.candles(instrument, timeframe, '2000-01-01 09:15', current_time, type='opt')
+    IST_OFFSET = 5 * 3600 + 30 * 60
+
+    # ----------------------------
+    # Detect equity vs option
+    # ----------------------------
+    inst_type = "eq"
+    opt_check = split_option_symbol(instrument)
+    if isinstance(opt_check, dict):
+        inst_type = "opt"
+
+    # ----------------------------
+    # Fetch candles
+    # ----------------------------
+    candles = engine.api.candles(
+        instrument,
+        timeframe,
+        '2000-01-01 09:15',
+        current_time,
+        type=inst_type
+    )
 
     converted_data = []
 
     for entry in candles:
-        # entry structure: [timestamp, open, high, low, close, volume]
-        
-        # Parse ISO-8601 string and convert to Unix timestamp (seconds)
         unix_time = int(datetime.fromisoformat(entry[0]).timestamp())
-        
-        ist_display_timestamp = unix_time + IST_OFFSET
-        
         converted_data.append({
-            "time": ist_display_timestamp,
+            "time": unix_time + IST_OFFSET,
             "open": entry[1],
             "high": entry[2],
             "low": entry[3],
             "close": entry[4]
         })
-
-    # candles = [
-    #     {
-    #         "time": 1706784000,
-    #         "open": 22540,
-    #         "high": 22610,
-    #         "low": 22520,
-    #         "close": 22590
-    #     },
-    #     # ...
-    # ]
 
     return jsonify(converted_data)

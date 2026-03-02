@@ -1,14 +1,31 @@
 /**
- * Candle chart and trade entry lines. Subscribes to state via uiSync callbacks.
+ * Candle chart and trade entry lines.
+ * Safe against duplicate API calls and rate limits.
  */
 
 import * as api from '../../core/api.js';
 import { onStateToUI } from '../../sync/uiSync.js';
 
+/* ───────────────────────────────────── */
+/* CONSTANTS */
+/* ───────────────────────────────────── */
+
+const TIMEFRAME_SECONDS = {
+  ONE_MINUTE: 60,
+  FIVE_MINUTE: 300,
+  FIFTEEN_MINUTE: 900,
+  ONE_HOUR: 3600,
+  ONE_DAY: 86400,
+};
+
+const LTP_INTERVAL_MS = 1000;
+
+/* ───────────────────────────────────── */
+/* CHART SETUP */
+/* ───────────────────────────────────── */
+
 const container = document.getElementById('candle-chart');
-if (!container) {
-  throw new Error('candle-chart element not found');
-}
+if (!container) throw new Error('candle-chart element not found');
 
 const chart = LightweightCharts.createChart(container, {
   width: container.clientWidth || 800,
@@ -25,189 +42,229 @@ const chart = LightweightCharts.createChart(container, {
   },
   crosshair: {
     mode: LightweightCharts.CrosshairMode.Normal,
-    vertLine: { color: 'rgba(255,255,255,0.15)', style: LightweightCharts.LineStyle.Dashed },
-    horzLine: { color: 'rgba(255,255,255,0.15)', style: LightweightCharts.LineStyle.Dashed },
-  },
-  rightPriceScale: {
-    borderColor: 'rgba(255,255,255,0.15)',
-    textColor: '#8b8fa3',
   },
   timeScale: {
-    borderColor: 'rgba(255,255,255,0.15)',
     timeVisible: true,
     secondsVisible: false,
     rightOffset: 10,
     barSpacing: 8,
   },
-  handleScroll: { mouseWheel: true, pressedMouseMove: true },
-  handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
-  watermark: { visible: false },
 });
 
-const candlestickSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
-  upColor: '#26a69a',
-  downColor: '#ef5350',
-  borderVisible: false,
-  wickUpColor: '#26a69a',
-  wickDownColor: '#ef5350',
-});
+const candlestickSeries = chart.addSeries(
+  LightweightCharts.CandlestickSeries,
+  {
+    upColor: '#26a69a',
+    downColor: '#ef5350',
+    wickUpColor: '#26a69a',
+    wickDownColor: '#ef5350',
+    borderVisible: false,
+  }
+);
 
-let didInitialFit = false;
+/* ───────────────────────────────────── */
+/* STATE */
+/* ───────────────────────────────────── */
+
 let currentInstrument = null;
-let lastInstrument = null;
 let currentTimeframe = 'ONE_MINUTE';
-/** True after we've loaded historical candles for currentInstrument; prevents refetch. */
+
 let historicalLoaded = false;
-/** Last bar in the series; updated with LTP on each tick. */
+let candleFetchPromise = null;
+
 let lastBar = null;
+let didInitialFit = false;
+
+let lastLtpCall = 0;
+
 const tradeEntryLines = new Map();
+
+/* ───────────────────────────────────── */
+/* TRADE ENTRY LINES */
+/* ───────────────────────────────────── */
 
 function updateTradeEntryLines(positions) {
   if (!currentInstrument) return;
-  const activeIds = new Set();
+
+  const active = new Set();
 
   (positions || []).forEach((pos) => {
-    if (!pos.is_open || pos.entry == null || pos.sym !== currentInstrument) return;
-    const id = pos.id;
-    activeIds.add(id);
+    if (!pos.is_open || pos.sym !== currentInstrument) return;
 
-    if (!tradeEntryLines.has(id)) {
-      const isBuy = pos.side === 'buy';
+    active.add(pos.id);
+
+    if (!tradeEntryLines.has(pos.id)) {
       const line = candlestickSeries.createPriceLine({
         price: pos.entry,
-        color: isBuy ? '#26a69a' : '#ef5350',
+        color: pos.side === 'buy' ? '#26a69a' : '#ef5350',
         lineWidth: 2,
         axisLabelVisible: true,
-        title: `${isBuy ? 'BUY' : 'SELL'} @ ${pos.entry}`,
       });
-      tradeEntryLines.set(id, line);
+      tradeEntryLines.set(pos.id, line);
     } else {
-      tradeEntryLines.get(id).applyOptions({ price: pos.entry });
+      tradeEntryLines.get(pos.id).applyOptions({ price: pos.entry });
     }
   });
 
   tradeEntryLines.forEach((line, id) => {
-    if (!activeIds.has(id)) {
+    if (!active.has(id)) {
       candlestickSeries.removePriceLine(line);
       tradeEntryLines.delete(id);
     }
   });
 }
 
-/**
- * Fetch historical candles only once per instrument. Subsequent updates use LTP.
- */
+/* ───────────────────────────────────── */
+/* HISTORICAL CANDLES */
+/* ───────────────────────────────────── */
+
 export function loadCandlesForInstrument(instrument, timeframe = currentTimeframe) {
   if (!instrument) return;
 
-  const instrumentChanged = instrument !== lastInstrument;
-  if (instrumentChanged) {
-    tradeEntryLines.forEach((line) => candlestickSeries.removePriceLine(line));
-    tradeEntryLines.clear();
-    lastInstrument = instrument;
-    historicalLoaded = false;
-    lastBar = null;
-  }
-
+  const instrumentChanged = instrument !== currentInstrument;
   const timeframeChanged = timeframe !== currentTimeframe;
-  currentInstrument = instrument;
-  currentTimeframe = timeframe;
-  didInitialFit = false;
 
-  if (timeframeChanged) {
+  if (instrumentChanged || timeframeChanged) {
+    currentInstrument = instrument;
+    currentTimeframe = timeframe;
+
     historicalLoaded = false;
+    candleFetchPromise = null;
     lastBar = null;
+    didInitialFit = false;
+
+    tradeEntryLines.forEach((l) => candlestickSeries.removePriceLine(l));
+    tradeEntryLines.clear();
   }
 
-  if (historicalLoaded) {
-    return;
-  }
+  if (historicalLoaded || candleFetchPromise) return;
 
-  api.postCandles(instrument, timeframe).then((candles) => {
-    if (!Array.isArray(candles) || candles.length === 0) return;
-    candles.sort((a, b) => a.time - b.time);
-    candlestickSeries.setData(candles);
-    historicalLoaded = true;
-    const last = candles[candles.length - 1];
-    lastBar = { time: last.time, open: last.open, high: last.high, low: last.low, close: last.close };
-    // Defer viewport so it runs after chart has real dimensions and has processed setData
-    requestAnimationFrame(() => {
+  candleFetchPromise = api
+    .postCandles(instrument, timeframe)
+    .then((candles) => {
+      if (!Array.isArray(candles) || candles.length === 0) return;
+
+      candles.sort((a, b) => a.time - b.time);
+      candlestickSeries.setData(candles);
+
+      const last = candles[candles.length - 1];
+      lastBar = { ...last };
+
+      historicalLoaded = true;
+
       requestAnimationFrame(() => {
         chart.fitContent();
         applyInitialViewport(candles);
         didInitialFit = true;
       });
+    })
+    .catch((err) => {
+      console.error('Candle fetch failed:', err);
+    })
+    .finally(() => {
+      candleFetchPromise = null;
     });
-  });
 }
 
-/**
- * Update the current last bar with LTP for the contract (no historical refetch).
- */
+/* ───────────────────────────────────── */
+/* LTP UPDATES */
+/* ───────────────────────────────────── */
+
 function updateLastBarWithLtp(contract) {
   if (!contract || !historicalLoaded || !lastBar) return;
 
-  api.postOptLtp({ contracts: [contract] }).then((result) => {
-    if (!result?.ok || !result?.data) return;
-    const ltp = result.data[contract];
-    if (ltp == null || typeof ltp !== 'number') return;
+  const nowMs = Date.now();
+  if (nowMs - lastLtpCall < LTP_INTERVAL_MS) return;
+  lastLtpCall = nowMs;
 
-    const updated = {
-      ...lastBar,
-      close: ltp,
-      high: Math.max(lastBar.high, ltp),
-      low: Math.min(lastBar.low, ltp),
-    };
-    lastBar = updated;
-    candlestickSeries.update(updated);
-    // console.log('Chart LTP updated:', updated);
-  }).catch((err) => console.error('Chart LTP update failed:', err));
+  api
+    .postOptLtp({ contracts: [contract] })
+    .then((res) => {
+      const ltp = res?.data?.[contract];
+      if (typeof ltp !== 'number') return;
+
+      const tf = TIMEFRAME_SECONDS[currentTimeframe] || 60;
+      const now = Math.floor(Date.now() / 1000);
+      const bucket = Math.floor(now / tf) * tf;
+
+      if (bucket > lastBar.time) {
+        lastBar = {
+          time: bucket,
+          open: lastBar.close,
+          high: ltp,
+          low: ltp,
+          close: ltp,
+        };
+        candlestickSeries.update(lastBar);
+        return;
+      }
+
+      lastBar = {
+        ...lastBar,
+        close: ltp,
+        high: Math.max(lastBar.high, ltp),
+        low: Math.min(lastBar.low, ltp),
+      };
+
+      candlestickSeries.update(lastBar);
+    })
+    .catch(console.error);
 }
 
+/* ───────────────────────────────────── */
+/* VIEWPORT */
+/* ───────────────────────────────────── */
+
 function applyInitialViewport(candles) {
-  if (!candles?.length) return;
   const total = candles.length;
   const visible = Math.min(10, total);
   chart.timeScale().setVisibleRange({
     from: candles[total - visible].time,
-    to: candles[total].time - 1,
+    to: candles[total - 1].time,
   });
 }
 
-const ro = new ResizeObserver((entries) => {
-  entries.forEach((e) => {
-    if (e.contentRect.width && e.contentRect.height) {
-      chart.applyOptions(e.contentRect);
-      const data = candlestickSeries.data();
-      if (!didInitialFit && data && data.length > 0) {
-        applyInitialViewport(data);
-        didInitialFit = true;
-      }
-    }
-  });
+/* ───────────────────────────────────── */
+/* RESIZE */
+/* ───────────────────────────────────── */
+
+const ro = new ResizeObserver(([e]) => {
+  if (!e.contentRect.width) return;
+  chart.applyOptions(e.contentRect);
 });
 ro.observe(container);
 
+/* ───────────────────────────────────── */
+/* TIMEFRAME SWITCH */
+/* ───────────────────────────────────── */
+
 document.querySelectorAll('.tf-switcher button').forEach((btn) => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tf-switcher button').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('.tf-switcher button')
+      .forEach((b) => b.classList.remove('active'));
+
     btn.classList.add('active');
-    if (currentInstrument) loadCandlesForInstrument(currentInstrument, btn.dataset.tf);
+
+    if (currentInstrument) {
+      loadCandlesForInstrument(currentInstrument, btn.dataset.tf);
+    }
   });
 });
+
+/* ───────────────────────────────────── */
+/* STATE SYNC */
+/* ───────────────────────────────────── */
 
 function onState(state) {
   if (state.positions) updateTradeEntryLines(state.positions);
   if (!state.selected_contract) return;
 
-  if (state.selected_contract !== currentInstrument || !historicalLoaded) {
+  if (state.selected_contract !== currentInstrument) {
     loadCandlesForInstrument(state.selected_contract);
-    updateLastBarWithLtp(state.selected_contract);
-
-    // console.log(candlestickSeries.data());
-  } else {
-    updateLastBarWithLtp(state.selected_contract);
+    return;
   }
+
+  updateLastBarWithLtp(state.selected_contract);
 }
 
 export function init() {

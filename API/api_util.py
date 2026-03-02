@@ -36,6 +36,10 @@ class API:
         self.authToken = None
         self.feedToken = None
         self.exchanges = None
+
+        self.api_key = None
+        self.username = None
+        self.pwd = None
         
         # Define directory paths
         self.LOG_DIR = "logs/util"
@@ -59,6 +63,11 @@ class API:
         api_key = api_key
         username = client_code
         pwd = pin
+
+        self.api_key = api_key
+        self.username = username
+        self.pwd = pwd
+        
         self.smartApi = SmartConnect(api_key)
         try:
             token = qr_value
@@ -516,6 +525,30 @@ class API:
 # CLASSES: Contract, OptionChain, Expiry
 # (These remain mostly the same, but OptionChain now creates directory if passed)
 # ------------------------------------------------------------------
+class EquityContract:
+    instrument_type = "EQUITY"
+
+    def __init__(self, api: API, symbol: str):
+        self.api = api
+        self.symbol = symbol.upper()
+        self.token = self.api.get_equity_token(self.symbol)
+
+    def ltp(self):
+        return self.api.eq_ltp(self.symbol)
+
+    def depth(self):
+        return self.api.eq_depth(self.symbol)
+
+    def bid(self):
+        d = self.depth()
+        return d.get("buy", [{}])[0].get("price") if d else None
+
+    def ask(self):
+        d = self.depth()
+        return d.get("sell", [{}])[0].get("price") if d else None
+
+    def __repr__(self):
+        return f"<Equity: {self.symbol}>"
 
 class Contract:
     """
@@ -523,6 +556,7 @@ class Contract:
     data and provides helper methods to fetch its current market price, depth, 
     and other relevant financial metrics.
     """
+    instrument_type = 'OPTION'
     def __init__(self, chain, contract_data):
         """
         Initializes the Contract object by parsing strike price and determining 

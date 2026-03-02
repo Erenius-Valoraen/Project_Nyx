@@ -24,6 +24,31 @@ api = API()
 api.login(API_KEY, USERNAME, PIN, TOKEN)
 api.prepare_resources(ignore_run_check=False)
 
+#!/usr/bin/env python3
+import json
+from niftystocks import ns
 
-collector = DataCollector(api, ['RELIANCE', 'HDFCBANK', 'TCS', 'LT', 'ITC', 'BEL'], silent=False)
+JSON_PATH = "jsonLookup/equity_nse.json"  # update path if needed
+
+
+
+nifty50_symbols = ns.get_nifty50()
+with open(JSON_PATH) as f:
+    data = json.load(f)
+symbol_to_name = {
+    entry["symbol"].replace("-EQ", ""): entry["name"]
+    for entry in data
+    if entry["symbol"].endswith("-EQ")
+}
+matched = []
+unmatched = []
+for sym in nifty50_symbols:
+    if sym in symbol_to_name:
+        matched.append(symbol_to_name[sym])
+    else:
+        unmatched.append(sym)
+
+matched.append('HDFCNIFTY')
+
+collector = DataCollector(api, matched, silent=False)
 collector.start()
